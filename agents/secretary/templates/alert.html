@@ -1,0 +1,75 @@
+<!-- Alert template — injected into base.html {content} slot -->
+
+<!-- Alert banner -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background:{alert_color};border-radius:6px;margin-bottom:24px;">
+  <tr>
+    <td style="padding:16px 20px;">
+      <p style="margin:0;font-size:16px;font-weight:700;color:#ffffff;">
+        🚨 Alerta Detectada: {rule_name}
+      </p>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6;">
+  El Secretario IA ha detectado una anomalía en la métrica
+  <strong style="color:#111827;">{metric_key}</strong>.
+</p>
+
+<!-- Metric comparison table -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;margin-bottom:24px;">
+  <thead>
+    <tr style="background:#f9fafb;">
+      <th colspan="2"
+          style="padding:10px 16px;font-size:13px;font-weight:600;color:#374151;text-align:left;border-bottom:1px solid #e5e7eb;">
+        Comparativa de Métricas
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:10px 16px;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:13px;">
+        Período de comparación
+      </td>
+      <td style="padding:10px 16px;border-bottom:1px solid #f3f4f6;font-weight:600;color:#111827;font-size:13px;text-align:right;">
+        {comparison_period}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:10px 16px;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:13px;">
+        Valor anterior
+      </td>
+      <td style="padding:10px 16px;border-bottom:1px solid #f3f4f6;font-weight:600;color:#374151;font-size:13px;text-align:right;">
+        {previous_value}
+      </td>
+    </tr>
+    <tr style="background:#fef9f0;">
+      <td style="padding:10px 16px;color:#6b7280;font-size:13px;">
+        Valor actual
+      </td>
+      <td style="padding:10px 16px;font-weight:700;color:{alert_color};font-size:15px;text-align:right;">
+        {current_value}
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- Change indicator -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:0 4px 4px 0;margin-bottom:24px;">
+  <tr>
+    <td style="padding:12px 16px;">
+      <p style="margin:0;font-size:14px;color:#92400e;">
+        <strong>{metric_key}</strong> {direction} <strong>{change_pct:.1f}%</strong>
+        respecto al {comparison_period}.
+      </p>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
+  Responde a este correo para confirmar que has tomado nota de esta alerta,
+  o accede al panel de KOS para más detalles.
+</p>

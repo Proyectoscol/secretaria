@@ -1,0 +1,36 @@
+# Dockerfile.kos — KOS Python services
+# Celery worker + Librarian API
+FROM python:3.11-slim
+
+# System deps (OCR + ClamAV client + build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    tesseract-ocr-spa \
+    tesseract-ocr-eng \
+    libmagic1 \
+    libgl1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy requirements first for layer caching
+COPY requirements.kos.txt .
+RUN pip install --no-cache-dir -r requirements.kos.txt
+
+# Pre-download the embedding model at build time so it's cached in the image
+RUN python -c "\
+from sentence_transformers import SentenceTransformer; \
+SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
+# Copy source
+COPY migrations/ ./migrations/
+COPY services/ ./services/
+COPY agents/ ./agents/
+
+# Non-root user for security
+RUN useradd -m -u 1000 kos && chown -R kos:kos /app
+USER kos
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1

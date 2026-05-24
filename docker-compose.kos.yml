@@ -1,0 +1,244 @@
+# docker-compose.kos.yml
+# Additional services for the KOS (Knowledge Operating System) module.
+# Run alongside the main OpenClaw compose:
+#   docker compose -f docker-compose.yml -f docker-compose.kos.yml up
+
+version: "3.9"
+
+services:
+
+  # ── Redis — Celery broker / result backend ───────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── ClamAV antivirus ─────────────────────────────────────────────────────────
+  # First start downloads ~200 MB of definitions.
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    environment:
+      - CLAMAV_NO_FRESHCLAM=false
+    volumes:
+      - clamav_db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "3"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s   # allow time for definition download
+
+  # ── GROBID — academic PDF metadata extraction ────────────────────────────────
+  grobid:
+    image: lfoppiano/grobid:0.8.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8070:8070"         # accessible only from localhost
+    environment:
+      - JAVA_OPTS=-Xmx2g -Xms512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8070/api/isalive || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── Celery worker — document processing queue ────────────────────────────────
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.kos
+    command: >
+      celery -A services.queue.celery_app.app worker
+        --loglevel=info
+        --concurrency=2
+        --queues=kos
+        --hostname=kos_worker@%h
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      clamav:
+        condition: service_healthy
+    environment:
+      - KOS_REDIS_URL=redis://redis:6379/0
+      - KOS_DB_DSN=${KOS_DB_DSN:-postgresql://openclaw:openclaw@postgres:5432/openclaw}
+      - KOS_CLAMD_HOST=clamav
+      - KOS_CLAMD_PORT=3310
+      - KOS_GROBID_URL=http://grobid:8070
+      - KOS_KNOWLEDGE_STORE_ROOT=/app/knowledge_store
+      - KOS_QUARANTINE_ROOT=/app/quarantine
+      - KOS_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      - KOS_CELERY_CONCURRENCY=2
+    volumes:
+      - knowledge_store:/app/knowledge_store
+      - quarantine:/app/quarantine
+      - /var/run/clamav/clamd.sock:/var/run/clamav/clamd.sock  # shared ClamAV socket
+    # Limit memory: 6 GB total for 2 concurrent workers
+    mem_limit: 6g
+    memswap_limit: 6g
+
+  # ── Librarian API ─────────────────────────────────────────────────────────────
+  librarian_api:
+    build:
+      context: .
+      dockerfile: Dockerfile.kos
+    command: python -m agents.librarian.api
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - KOS_REDIS_URL=redis://redis:6379/0
+      - KOS_DB_DSN=${KOS_DB_DSN:-postgresql://openclaw:openclaw@postgres:5432/openclaw}
+      - KOS_KNOWLEDGE_STORE_ROOT=/app/knowledge_store
+      - KOS_API_PORT=8001
+    ports:
+      - "127.0.0.1:8001:8001"         # internal only
+    volumes:
+      - knowledge_store:/app/knowledge_store
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8001/internal/librarian/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ── Frontend (Next.js) ──────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file:
+      - ./frontend/.env.local
+    depends_on:
+      - librarian_api
+    environment:
+      - NODE_ENV=production
+
+  # ── Postfix — SMTP MTA (send + receive) ─────────────────────────────────────
+  postfix:
+    build:
+      context: ./mail/postfix
+      dockerfile: Dockerfile.postfix
+    restart: unless-stopped
+    ports:
+      # Port 25 MUST be public to receive mail from the internet.
+      # Ask your VPS provider to unblock it if needed (see docs/dns_setup.md).
+      - "25:25"
+      # Port 587 for authenticated submission — internal Docker only
+      - "127.0.0.1:587:587"
+    volumes:
+      - mail_data:/var/mail/vhosts
+      - ./mail/opendkim/keys:/etc/opendkim/keys:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    environment:
+      - MAIL_DOMAIN=${MAIL_DOMAIN}
+    depends_on:
+      - opendkim
+      - rspamd
+      - dovecot
+    networks:
+      - default
+
+  # ── Dovecot — IMAP server and LMTP local delivery ────────────────────────────
+  dovecot:
+    build:
+      context: ./mail/dovecot
+      dockerfile: Dockerfile.dovecot
+    restart: unless-stopped
+    volumes:
+      - mail_data:/var/mail/vhosts
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    environment:
+      - MAIL_DOMAIN=${MAIL_DOMAIN}
+    # IMAP only accessible internally (not exposed to host)
+
+  # ── OpenDKIM — DKIM signing/verification ─────────────────────────────────────
+  opendkim:
+    build:
+      context: ./mail/opendkim
+      dockerfile: Dockerfile.opendkim
+    restart: unless-stopped
+    volumes:
+      - ./mail/opendkim/keys:/etc/opendkim/keys:ro
+    environment:
+      - MAIL_DOMAIN=${MAIL_DOMAIN}
+
+  # ── Rspamd — anti-spam / anti-spoofing ────────────────────────────────────────
+  rspamd:
+    image: rspamd/rspamd:latest
+    restart: unless-stopped
+    volumes:
+      - ./mail/rspamd/local.d:/etc/rspamd/local.d:ro
+      - rspamd_data:/var/lib/rspamd
+
+  # ── Celery Beat — scheduled tasks (reports, polling, anomaly checks) ──────────
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.kos
+    command: >
+      celery -A agents.secretary.scheduler beat
+        --loglevel=info
+        --scheduler celery.beat.PersistentScheduler
+        --schedule=/tmp/celerybeat-schedule
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - KOS_REDIS_URL=redis://redis:6379/0
+      - KOS_DB_DSN=${KOS_DB_DSN:-postgresql://openclaw:openclaw@postgres:5432/openclaw}
+      - MAIL_DOMAIN=${MAIL_DOMAIN}
+      - MAIL_SECRETARIO_ADDRESS=${MAIL_SECRETARIO_ADDRESS}
+      - MAIL_SECRETARIO_PASSWORD=${MAIL_SECRETARIO_PASSWORD}
+      - MAIL_SECRETARIO_DISPLAY_NAME=${MAIL_SECRETARIO_DISPLAY_NAME:-Secretaria IA}
+      - MAIL_SMTP_HOST=postfix
+      - MAIL_SMTP_PORT=587
+      - MAIL_IMAP_HOST=dovecot
+      - MAIL_IMAP_PORT=993
+      - MAIL_POLL_INTERVAL_SECONDS=${MAIL_POLL_INTERVAL_SECONDS:-30}
+      - MAIL_RECEIVE_MODE=${MAIL_RECEIVE_MODE:-imap}
+      - MAIL_REPORT_TIMEZONE=${MAIL_REPORT_TIMEZONE:-America/Bogota}
+      - LIBRARIAN_API_URL=http://librarian_api:8001
+
+  # ── Langfuse — self-hosted LLM observability ────────────────────────────────
+  langfuse:
+    image: langfuse/langfuse:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"          # UI accessible from localhost only
+    environment:
+      - TELEMETRY_ENABLED=false          # no usage data sent to Langfuse cloud
+      - NEXTAUTH_SECRET=${LANGFUSE_NEXTAUTH_SECRET:-change-me-in-production}
+      - NEXTAUTH_URL=http://localhost:3001
+      - DATABASE_URL=${LANGFUSE_DATABASE_URL:-postgresql://openclaw:openclaw@postgres:5432/langfuse}
+      - SALT=${LANGFUSE_SALT:-change-me-in-production}
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/public/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  redis_data:
+  clamav_db:
+  knowledge_store:
+  quarantine:
+  mail_data:
+  rspamd_data:
+  langfuse_data:

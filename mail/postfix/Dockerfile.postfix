@@ -1,0 +1,29 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      postfix \
+      postfix-pcre \
+      libsasl2-modules \
+      libsasl2-2 \
+      sasl2-bin \
+      ca-certificates \
+      curl \
+      && rm -rf /var/lib/apt/lists/*
+
+# Copy configuration
+COPY main.cf /etc/postfix/main.cf
+COPY master.cf /etc/postfix/master.cf
+COPY virtual /etc/postfix/virtual
+COPY header_checks /etc/postfix/header_checks
+
+# Postfix needs the hostname to be set at runtime.
+# We set it via MAIL_DOMAIN environment variable in entrypoint.
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Postfix requires specific directory permissions
+RUN mkdir -p /var/mail/vhosts && chmod 755 /var/mail/vhosts
+
+EXPOSE 25 587
+
+ENTRYPOINT ["/entrypoint.sh"]

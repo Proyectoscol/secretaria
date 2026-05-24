@@ -1,0 +1,39 @@
+<!-- Report template — injected into base.html {content} slot -->
+
+<h1 style="margin:0 0 4px;font-size:20px;font-weight:700;color:#111827;">{report_title}</h1>
+<p style="margin:0 0 24px;font-size:13px;color:#6b7280;">{report_date}</p>
+
+<p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.6;">
+  A continuación se presenta un resumen de la actividad de <strong>KOS</strong>
+  durante {period_description}.
+</p>
+
+<!-- Stats table -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;margin-bottom:24px;">
+  <thead>
+    <tr style="background:#f9fafb;">
+      <th style="padding:10px 12px;font-size:12px;font-weight:600;color:#6b7280;text-align:left;border-bottom:1px solid #e5e7eb;text-transform:uppercase;letter-spacing:0.05em;">
+        Métrica
+      </th>
+      <th style="padding:10px 12px;font-size:12px;font-weight:600;color:#6b7280;text-align:right;border-bottom:1px solid #e5e7eb;text-transform:uppercase;letter-spacing:0.05em;">
+        Valor
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    {stats_rows}
+  </tbody>
+</table>
+
+<!-- Amber accent divider -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="margin-bottom:16px;">
+  <tr>
+    <td style="border-top:2px solid #f59e0b;font-size:0;">&nbsp;</td>
+  </tr>
+</table>
+
+<p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
+  Para consultas o aclaraciones, responde a este correo y el Secretario IA procesará tu solicitud.
+</p>

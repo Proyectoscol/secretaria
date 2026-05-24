@@ -1,0 +1,19 @@
+# =============================================================================
+# Postfix header_checks — PCRE rules for header filtering
+# Blocks common spam patterns and header injections
+# =============================================================================
+
+# Block attempts to inject multiple recipients via Subject or other headers
+/^\s*(Received|X-Originating-IP|X-Mailer):\s*.*\r\n/ IGNORE
+
+# Block known spam patterns in subject
+/^Subject:.*\[SPAM\]/  REJECT Rejected by content policy
+
+# Block headers that indicate bulk mail tools (unless we generate them ourselves)
+/^X-Mailer:\s*(The Bat|MassMail|Bulk|Blat)/i  REJECT Bulk mailer headers not accepted
+
+# Strip BCC headers to prevent information leakage
+/^Bcc:/  IGNORE
+
+# Normalize header encoding attacks
+/^(From|To|Cc|Subject):.*=\?(utf-8|iso-8859-1)\?[bqBQ]\?[a-zA-Z0-9+\/=]+\?=\s*=\?/  OK

@@ -1,0 +1,47 @@
+# KOS Python requirements — all MIT or Apache 2.0 licensed
+# Pin major versions; update only after testing.
+
+# ── Database ──────────────────────────────────────────────────────────────────
+psycopg2-binary==2.9.9
+pgvector==0.3.2                         # psycopg2 vector adapter
+
+# ── Queue ─────────────────────────────────────────────────────────────────────
+celery[redis]==5.3.6
+redis==5.0.3
+
+# ── Web API ───────────────────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+pydantic==2.7.1
+
+# ── Document parsing ──────────────────────────────────────────────────────────
+PyMuPDF==1.24.3                         # AGPL / commercial — used only server-side
+docling==2.5.0                          # MIT
+pdfplumber==0.11.1                      # MIT
+pytesseract==0.3.10                     # Apache 2.0 (wraps tesseract-ocr)
+Pillow==10.3.0                          # MIT / HPND
+openpyxl==3.1.2                         # MIT
+beautifulsoup4==4.12.3                  # MIT
+lxml==5.2.1                             # BSD
+
+# ── Security ──────────────────────────────────────────────────────────────────
+python-magic==0.4.27                    # MIT
+clamd==1.0.2                            # LGPLv2 (pure Python ClamAV client)
+oletools==0.60.2                        # BSD
+
+# ── Embeddings (local CPU) ────────────────────────────────────────────────────
+sentence-transformers==3.0.1            # Apache 2.0
+torch==2.3.0+cpu                        # BSD — CPU-only build
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# ── Language detection ────────────────────────────────────────────────────────
+langdetect==1.0.9                       # Apache 2.0
+
+# ── Mail ──────────────────────────────────────────────────────────────────────
+python-dateutil==2.9.0                  # BSD — RFC 5322 date parsing
+
+# ── LLM client (OpenRouter) ───────────────────────────────────────────────────
+httpx==0.27.0                           # BSD — async-capable HTTP client
+
+# ── Observability (self-hosted Langfuse) ─────────────────────────────────────
+langfuse==2.36.1                        # MIT — LLM tracing (self-hosted only)

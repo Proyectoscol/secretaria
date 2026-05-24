@@ -251,3 +251,8 @@ extensions/**/.openclaw-runtime-deps-stamp.json
 /.opengrep-out/
 /.crabbox-artifacts
 .comux*
+
+# ─── KOS Mail — DKIM private keys (NEVER commit) ─────────────────────────────
+mail/opendkim/keys/
+# Generated Dovecot user database (contains hashed passwords)
+mail/dovecot/users

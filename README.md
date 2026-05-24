@@ -94,6 +94,55 @@ Works with npm, pnpm, or bun.
 
 Model note: while many providers and models are supported, prefer a current flagship model from the provider you trust and already use. See [Onboarding](https://docs.openclaw.ai/start/wizard).
 
+## KOS — Knowledge Operating System (VPS install)
+
+KOS is the enterprise document-intelligence module for OpenClaw. It runs on a
+VPS (Ubuntu 24, Docker) and adds a full-stack knowledge base with antivirus
+scanning, multi-format document ingestion, vector search, and a Next.js UI.
+
+### One-command install on a fresh VPS
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/openclaw/openclaw/main/scripts/bootstrap.sh | bash
+```
+
+This installs Docker, Nginx, Certbot, clones the repo to `/opt/kos`, and
+launches the interactive setup wizard.
+
+> **Note:** Run as a non-root user with `sudo` access. Never run as `root`.
+
+### Manual install (step by step)
+
+```bash
+# 1. Clone
+git clone https://github.com/openclaw/openclaw /opt/kos
+cd /opt/kos
+
+# 2. Interactive wizard (configures .env files, builds images, migrates DB,
+#    sets up Nginx + SSL, starts all services)
+bash scripts/onboarding.sh
+```
+
+### What gets installed
+
+| Service | Port | Description |
+|---|---|---|
+| Next.js frontend | 3000 (proxied via Nginx) | Web UI |
+| Librarian API (FastAPI) | 8001 (internal) | Query + ingest |
+| Celery worker | — | Async document pipeline |
+| Redis | 6379 (internal) | Celery broker |
+| ClamAV | 3310 (internal) | Antivirus |
+| GROBID | 8070 (localhost) | Academic PDF metadata |
+
+### Requirements
+
+- Ubuntu 24, 8 GB RAM, 4 vCPU, 40 GB disk
+- Two Microsoft Azure app registrations (App 1: auth, App 2: platform)
+- PostgreSQL ≥ 14 with `pgvector` extension
+- Domain pointed at your VPS
+
+---
+
 ## Install (recommended)
 
 Runtime: **Node 24 (recommended) or Node 22.19+**.

@@ -1,0 +1,22 @@
+# =============================================================================
+# Postfix virtual mailbox map
+# Format: address@domain    domain/user/
+# Substituted at startup via entrypoint.sh
+# =============================================================================
+
+# ── Secretario IA ─────────────────────────────────────────────────────────────
+secretaria@${MAIL_DOMAIN}     ${MAIL_DOMAIN}/secretaria/
+ia@${MAIL_DOMAIN}             ${MAIL_DOMAIN}/secretaria/
+agente@${MAIL_DOMAIN}         ${MAIL_DOMAIN}/secretaria/
+
+# ── Operaciones ───────────────────────────────────────────────────────────────
+operaciones@${MAIL_DOMAIN}    ${MAIL_DOMAIN}/operaciones/
+
+# ── Reportes (alias → secretaria) ────────────────────────────────────────────
+reportes@${MAIL_DOMAIN}       ${MAIL_DOMAIN}/secretaria/
+alertas@${MAIL_DOMAIN}        ${MAIL_DOMAIN}/secretaria/
+
+# ── DMARC reports ─────────────────────────────────────────────────────────────
+dmarc@${MAIL_DOMAIN}          ${MAIL_DOMAIN}/dmarc/
+
+# Agregar más buzones aquí o via la API de configuración del frontend

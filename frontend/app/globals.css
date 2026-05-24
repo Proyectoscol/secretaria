@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Google Fonts: Sora (display) + Plus Jakarta Sans (UI) ──────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+@layer base {
+  :root {
+    /* ── Light theme (secondary, not default) ───────────────────────────────── */
+    --background:     0 0% 98%;
+    --foreground:     240 10% 8%;
+    --card:           0 0% 100%;
+    --card-foreground: 240 10% 8%;
+    --popover:        0 0% 100%;
+    --popover-foreground: 240 10% 8%;
+
+    --primary:        38 92% 50%;        /* amber-500 */
+    --primary-foreground: 240 10% 8%;
+
+    --secondary:      240 5% 94%;
+    --secondary-foreground: 240 10% 25%;
+
+    --muted:          240 5% 93%;
+    --muted-foreground: 240 5% 48%;
+
+    --accent:         38 92% 50%;
+    --accent-foreground: 240 10% 8%;
+
+    --destructive:    0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border:         240 6% 88%;
+    --input:          240 6% 88%;
+    --ring:           38 92% 50%;
+
+    --surface:        240 5% 96%;
+    --surface-elevated: 0 0% 100%;
+
+    --radius:         0.625rem;
+  }
+
+  .dark {
+    /* ── Dark theme — default ───────────────────────────────────────────────── */
+    --background:     240 10% 5%;        /* #0b0b0f — deep midnight */
+    --foreground:     210 20% 93%;       /* near-white with warmth */
+    --card:           240 9% 8%;         /* #111118 */
+    --card-foreground: 210 20% 93%;
+
+    --popover:        240 9% 9%;
+    --popover-foreground: 210 20% 93%;
+
+    --primary:        38 92% 50%;        /* amber — the one accent */
+    --primary-foreground: 240 10% 6%;
+
+    --secondary:      240 7% 12%;        /* #181820 */
+    --secondary-foreground: 210 15% 75%;
+
+    --muted:          240 7% 13%;
+    --muted-foreground: 210 10% 50%;
+
+    --accent:         38 92% 50%;
+    --accent-foreground: 240 10% 6%;
+
+    --destructive:    0 72% 51%;
+    --destructive-foreground: 210 20% 93%;
+
+    --border:         240 7% 16%;        /* subtle dividers */
+    --input:          240 7% 14%;
+    --ring:           38 92% 50%;        /* amber focus ring */
+
+    --surface:        240 8% 10%;
+    --surface-elevated: 240 7% 13%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+  }
+
+  h1, h2, h3 {
+    @apply font-display;
+  }
+
+  /* ── Safe area for mobile notch/home indicator ──────────────────────────── */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+@layer components {
+  /* ── Amber glow — used on focus rings and active states ──────────────────── */
+  .amber-glow {
+    box-shadow: 0 0 0 1px hsl(38 92% 50% / 0.3),
+                0 0 12px hsl(38 92% 50% / 0.12);
+  }
+
+  /* ── Glass surface (sidebar, cards on dark) ──────────────────────────────── */
+  .glass {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+
+  /* ── Shimmer skeleton ────────────────────────────────────────────────────── */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--surface-elevated)) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* ── Scrollbar styling ────────────────────────────────────────────────────── */
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 2px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+
+  /* ── Chat bubble ─────────────────────────────────────────────────────────── */
+  .prose-chat {
+    @apply text-sm leading-relaxed;
+  }
+  .prose-chat p { @apply mb-3 last:mb-0; }
+  .prose-chat code {
+    @apply px-1.5 py-0.5 rounded text-xs font-mono
+           bg-secondary text-foreground;
+  }
+  .prose-chat pre {
+    @apply p-3 rounded-lg overflow-x-auto text-xs font-mono
+           bg-secondary border border-border;
+  }
+  .prose-chat pre code { @apply bg-transparent p-0; }
+  .prose-chat a { @apply text-primary underline underline-offset-2; }
+  .prose-chat ul { @apply list-disc pl-5 mb-3; }
+  .prose-chat ol { @apply list-decimal pl-5 mb-3; }
+  .prose-chat li { @apply mb-1; }
+  .prose-chat blockquote {
+    @apply border-l-2 border-primary pl-3 italic text-muted-foreground;
+  }
+  .prose-chat table {
+    @apply w-full text-xs border-collapse mb-3;
+  }
+  .prose-chat th, .prose-chat td {
+    @apply border border-border px-2 py-1 text-left;
+  }
+  .prose-chat th { @apply font-semibold bg-secondary; }
+}
