@@ -13,6 +13,7 @@ model Tenant {
   name      String
   createdAt DateTime @default(now()) @map("created_at")
   users     User[]
+  notifications UserNotification[]
 
   @@map("tenants")
 }
@@ -36,6 +37,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   platformToken MicrosoftPlatformToken?
+  notifications UserNotification[]
 
   @@map("users")
 }
@@ -82,18 +84,48 @@ model VerificationToken {
 }
 
 // Microsoft App 2 platform tokens ─────────────────────────────────────────────
+// Fields added by migration 004_token_isolation.sql:
+//   isValid, refreshErrorCount, lastRefreshError, useCount, lastUsedAt
 model MicrosoftPlatformToken {
-  id                   String    @id @default(uuid())
-  userId               String    @unique @map("user_id")
-  encryptedAccessToken String    @map("encrypted_access_token") @db.Text
-  encryptedRefreshToken String   @map("encrypted_refresh_token") @db.Text
-  tokenExpiresAt       DateTime  @map("token_expires_at")
-  scopesGranted        String[]  @map("scopes_granted")
-  connectedAt          DateTime  @default(now()) @map("connected_at")
-  lastRefreshedAt      DateTime? @map("last_refreshed_at")
-  microsoftUserId      String?   @map("microsoft_user_id")
+  id                    String    @id @default(uuid())
+  userId                String    @unique @map("user_id")
+  encryptedAccessToken  String    @map("encrypted_access_token") @db.Text
+  encryptedRefreshToken String    @map("encrypted_refresh_token") @db.Text
+  tokenExpiresAt        DateTime  @map("token_expires_at")
+  scopesGranted         String[]  @map("scopes_granted")
+  connectedAt           DateTime  @default(now()) @map("connected_at")
+  lastRefreshedAt       DateTime? @map("last_refreshed_at")
+  microsoftUserId       String?   @map("microsoft_user_id")
+  // Token health (migration 004)
+  isValid               Boolean   @default(true) @map("is_valid")
+  refreshErrorCount     Int       @default(0) @map("refresh_error_count")
+  lastRefreshError      String?   @map("last_refresh_error") @db.Text
+  // Usage tracking (migration 004)
+  useCount              Int       @default(0) @map("use_count")
+  lastUsedAt            DateTime? @map("last_used_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifications     UserNotification[]
 
   @@map("microsoft_platform_tokens")
+}
+
+// Per-user notifications (e.g. token_expired) — migration 004 ─────────────────
+// One active notification per type per user (UNIQUE user_id, type).
+// dismissed_at = NULL means still active; set by the dismiss endpoint.
+model UserNotification {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  tenantId    String    @map("tenant_id")
+  type        String    // e.g. "token_expired"
+  payload     Json?     @default("{}")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  dismissedAt DateTime? @map("dismissed_at")
+
+  user   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant                  @relation(fields: [tenantId], references: [id])
+
+  @@unique([userId, type])
+  @@index([userId, dismissedAt])
+  @@map("user_notifications")
 }

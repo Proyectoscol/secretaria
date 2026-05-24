@@ -88,16 +88,23 @@ def send_all_monthly_reports() -> dict:
 
 
 def _dispatch_reports(report_type: str) -> dict:
-    """Query active report schedules and dispatch per-tenant report tasks."""
+    """
+    Query active report schedules and dispatch per-tenant report tasks.
+
+    Schedules without owner_user_id are skipped: every Celery task must have
+    an explicit owner so tokens and audit logs are always attributable.
+    """
     from agents.secretary.tasks import send_scheduled_report_task  # noqa: PLC0415
 
     db_conn = _get_db()
     dispatched = 0
+    skipped = 0
     try:
         with db_conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT tenant_id, recipients FROM mail_report_schedules
+                SELECT id, tenant_id, owner_user_id, recipients
+                FROM mail_report_schedules
                 WHERE report_type = %s AND is_active = TRUE
                 """,
                 (report_type,),
@@ -105,16 +112,35 @@ def _dispatch_reports(report_type: str) -> dict:
             rows = cur.fetchall()
 
         for row in rows:
-            tenant_id, recipients = str(row[0]), row[1] or []
+            schedule_id   = str(row[0])
+            tenant_id     = str(row[1])
+            owner_user_id = str(row[2]) if row[2] else None
+            recipients    = row[3] or []
+
+            if not owner_user_id:
+                # Never dispatch without a known owner — we cannot safely access
+                # Microsoft tokens or create an auditable execution context.
+                log.warning(
+                    "scheduler: skipping schedule=%s (%s) — owner_user_id not set",
+                    schedule_id, report_type,
+                )
+                skipped += 1
+                continue
+
             send_scheduled_report_task.delay(
                 tenant_id=tenant_id,
+                owner_user_id=owner_user_id,
                 report_type=report_type,
                 recipients=recipients,
+                schedule_id=schedule_id,
             )
             dispatched += 1
 
-        log.info("scheduler: dispatched %d %s tasks", dispatched, report_type)
-        return {"dispatched": dispatched, "report_type": report_type}
+        log.info(
+            "scheduler: dispatched=%d skipped=%d for %s",
+            dispatched, skipped, report_type,
+        )
+        return {"dispatched": dispatched, "skipped": skipped, "report_type": report_type}
 
     except Exception:
         log.exception("scheduler: error dispatching %s reports", report_type)

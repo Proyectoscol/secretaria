@@ -89,6 +89,10 @@ class AlertRuleRequest(BaseModel):
     min_interval_hours: int = 4
 
 
+class DismissNotificationRequest(BaseModel):
+    notification_type: str
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @secretary_app.post("/internal/secretary/send")
@@ -428,6 +432,95 @@ def get_schedules(x_tenant_id: Optional[str] = Header(default=None)):
                 for r in rows
             ]
         }
+    finally:
+        db_conn.close()
+
+
+# ── Notifications endpoints ───────────────────────────────────────────────────
+
+@secretary_app.get("/internal/secretary/notifications/unread")
+def get_unread_notifications(
+    x_tenant_id: Optional[str] = Header(default=None),
+    x_user_id: Optional[str] = Header(default=None),
+):
+    """
+    Return unread notifications for the requesting user.
+
+    Used by the TokenExpiryBanner to poll for token_expired notifications.
+    Returns only notifications belonging to the requesting user (from the
+    session), never for other users — enforced by WHERE user_id = %s.
+    """
+    tenant_id = _require_tenant(x_tenant_id)
+    if not x_user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    db_conn = _db()
+    try:
+        with db_conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, type, payload, created_at
+                FROM user_notifications
+                WHERE user_id = %s
+                  AND tenant_id = %s
+                  AND dismissed_at IS NULL
+                ORDER BY created_at DESC
+                """,
+                (x_user_id, tenant_id),
+            )
+            rows = cur.fetchall()
+        return {
+            "notifications": [
+                {
+                    "id": str(r[0]),
+                    "type": r[1],
+                    "payload": r[2],
+                    "created_at": r[3].isoformat() if r[3] else None,
+                }
+                for r in rows
+            ]
+        }
+    finally:
+        db_conn.close()
+
+
+@secretary_app.post("/internal/secretary/notifications/dismiss")
+def dismiss_notification(
+    req: DismissNotificationRequest,
+    x_tenant_id: Optional[str] = Header(default=None),
+    x_user_id: Optional[str] = Header(default=None),
+):
+    """
+    Mark a notification type as dismissed for the requesting user.
+
+    Sets dismissed_at so it no longer appears in unread.
+    Uses UPDATE WHERE user_id = %s — a user can only dismiss their own
+    notifications; no cross-user modification is possible.
+    """
+    tenant_id = _require_tenant(x_tenant_id)
+    if not x_user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    db_conn = _db()
+    try:
+        import datetime  # noqa: PLC0415
+        with db_conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE user_notifications
+                SET dismissed_at = %s
+                WHERE user_id = %s
+                  AND tenant_id = %s
+                  AND type = %s
+                  AND dismissed_at IS NULL
+                """,
+                (datetime.datetime.utcnow(), x_user_id, tenant_id, req.notification_type),
+            )
+        db_conn.commit()
+        return {"dismissed": req.notification_type}
+    except Exception as exc:
+        db_conn.rollback()
+        raise HTTPException(status_code=500, detail=str(exc))
     finally:
         db_conn.close()
 

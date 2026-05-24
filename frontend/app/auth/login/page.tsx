@@ -1,51 +1,57 @@
 "use client";
+/**
+ * Login page — Microsoft only.
+ *
+ * Credential flow (/auth/register) still exists for the initial admin setup
+ * but is not surfaced here. Day-to-day access is exclusively via Microsoft.
+ *
+ * Popup → redirect fallback:
+ *  1. signIn({ redirect: false }) opens a popup on desktop.
+ *  2. If the browser blocks the popup (common on mobile), fall back to
+ *     full-page redirect — works on every device.
+ */
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import Link from "next/link";
-import { Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
-import { loginSchema, type LoginInput } from "@/lib/validators";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { MicrosoftButton } from "@/components/auth/MicrosoftButton";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [showPwd, setShowPwd] = useState(false);
+  const router  = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(
-    params.get("error") === "CredentialsSignin" ? "Email o contraseña incorrectos" : null
-  );
+  const [error,   setError  ] = useState("");
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginInput>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { rememberMe: false },
-  });
-
-  const onSubmit = async (data: LoginInput) => {
+  async function handleMicrosoftLogin() {
     setLoading(true);
-    setError(null);
-    const res = await signIn("credentials", {
-      email: data.email,
-      password: data.password,
+    setError("");
+
+    // ── Attempt popup (desktop) ────────────────────────────────────────────
+    const result = await signIn("microsoft-entra-id", {
       redirect: false,
+      callbackUrl: "/chat",
     });
-    setLoading(false);
-    if (res?.error) {
-      setError("Email o contraseña incorrectos");
-    } else {
-      router.push("/chat");
+
+    // ── Popup blocked → fall back to full redirect (mobile / strict browsers)
+    if (!result || (!result.url && !result.error)) {
+      await signIn("microsoft-entra-id", { callbackUrl: "/chat" });
+      return;
     }
-  };
+
+    if (result.error) {
+      setError(
+        result.error === "AccessDenied" ||
+        result.error.toLowerCase().includes("domain")
+          ? "Tu cuenta no pertenece a una organización autorizada."
+          : "No se pudo iniciar sesión. Intenta de nuevo."
+      );
+      setLoading(false);
+      return;
+    }
+
+    if (result.url) {
+      router.push(result.url);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -53,124 +59,81 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-md"
+        className="w-full max-w-sm"
       >
-        {/* Logo / wordmark */}
-        <div className="text-center mb-10">
+        {/* Wordmark */}
+        <div className="text-center mb-12">
           <span className="font-display text-3xl font-bold tracking-tight text-foreground">
             OpenClaw <span className="text-primary">KOS</span>
           </span>
-          <p className="text-muted-foreground text-sm mt-2 font-sans">
+          <p className="text-muted-foreground text-sm mt-2">
             Knowledge Operating System
           </p>
         </div>
 
-        <div className="glass rounded-2xl p-8 shadow-2xl">
-          <h1 className="font-display text-xl font-semibold mb-6 text-foreground">
-            Iniciar sesión
-          </h1>
-
-          {/* Microsoft sign-in */}
-          <MicrosoftButton className="w-full mb-6" />
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs text-muted-foreground">
-              <span className="bg-card px-3">o con correo</span>
-            </div>
+        {/* Card */}
+        <div className="glass rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-6">
+          <div className="text-center space-y-1">
+            <h1 className="font-display text-lg font-semibold text-foreground">
+              Iniciar sesión
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Usa tu cuenta corporativa Microsoft
+            </p>
           </div>
 
-          {/* Error banner */}
+          {/* Microsoft button */}
+          <button
+            type="button"
+            onClick={handleMicrosoftLogin}
+            disabled={loading}
+            className="
+              w-full flex items-center justify-center gap-3
+              h-11 px-5 rounded-xl
+              border border-border bg-secondary hover:bg-secondary/70
+              text-sm font-medium text-foreground
+              transition-colors duration-150
+              disabled:opacity-60 disabled:cursor-not-allowed
+              focus-visible:outline-none focus-visible:ring-2
+              focus-visible:ring-primary focus-visible:ring-offset-2
+            "
+          >
+            {loading ? (
+              <Loader2 size={16} className="animate-spin flex-shrink-0" />
+            ) : (
+              <svg
+                width="18" height="18" viewBox="0 0 18 18"
+                fill="none" aria-hidden="true" className="flex-shrink-0"
+              >
+                <rect x="0"   y="0"   width="8.5" height="8.5" fill="#F25022" />
+                <rect x="9.5" y="0"   width="8.5" height="8.5" fill="#7FBA00" />
+                <rect x="0"   y="9.5" width="8.5" height="8.5" fill="#00A4EF" />
+                <rect x="9.5" y="9.5" width="8.5" height="8.5" fill="#FFB900" />
+              </svg>
+            )}
+            <span>{loading ? "Redirigiendo…" : "Continuar con Microsoft"}</span>
+          </button>
+
+          {/* Inline error — never a toast */}
           {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm"
+            <motion.p
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-sm text-red-500 text-center w-full"
+              role="alert"
             >
               {error}
-            </motion.div>
+            </motion.p>
           )}
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium">
-                Correo electrónico
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="tu@empresa.com"
-                {...register("email")}
-                className={errors.email ? "border-destructive" : ""}
-              />
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm font-medium">
-                Contraseña
-              </Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPwd ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  {...register("password")}
-                  className={`pr-10 ${errors.password ? "border-destructive" : ""}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwd((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  {...register("rememberMe")}
-                  className="rounded border-border accent-primary"
-                />
-                Recordarme
-              </label>
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full h-11 font-semibold"
-              disabled={loading}
-            >
-              {loading ? (
-                <Loader2 size={16} className="animate-spin mr-2" />
-              ) : (
-                <LogIn size={16} className="mr-2" />
-              )}
-              {loading ? "Ingresando…" : "Ingresar"}
-            </Button>
-          </form>
-
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            ¿No tienes cuenta?{" "}
-            <Link
-              href="/auth/register"
-              className="text-primary font-medium hover:underline"
-            >
-              Regístrate
-            </Link>
-          </p>
         </div>
+
+        {/* Admin setup footnote */}
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          ¿Primera vez?{" "}
+          <a href="/auth/register" className="text-primary hover:underline underline-offset-2">
+            Configuración inicial del administrador
+          </a>
+        </p>
       </motion.div>
     </div>
   );

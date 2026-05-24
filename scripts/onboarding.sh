@@ -876,9 +876,9 @@ MAILENV
     chmod 600 "$KOS_ENV_FILE"
     success "Variables de correo guardadas en .env.kos"
 
-    # ── 7. Aplicar migración de correo ────────────────────────────────────
+    # ── 7. Aplicar migraciones de correo y seguridad ──────────────────────
     echo
-    if confirm "¿Aplicar migración de base de datos para el sistema de correo? (003_mail_schema.sql)"; then
+    if confirm "¿Aplicar migraciones de base de datos para el sistema de correo y seguridad? (003 + 004)"; then
       DB_PASS=$(echo "$KOS_DB_DSN" | grep -oP '(?<=:)[^:@]+(?=@)' || true)
       if docker run --rm --net=host \
           -e PGPASSWORD="${DB_PASS}" \
@@ -887,8 +887,24 @@ MAILENV
           psql "$KOS_DB_DSN" -f "/migrations/003_mail_schema.sql"; then
         success "003_mail_schema.sql aplicado"
       else
-        error "Error aplicando migración de correo"
+        error "Error aplicando migración 003_mail_schema.sql"
         warn "Puedes aplicarla manualmente: psql \$KOS_DB_DSN < migrations/003_mail_schema.sql"
+      fi
+
+      # 004 — token isolation, audit log, notifications
+      echo
+      info "Aplicando migración de aislamiento de tokens (004_token_isolation.sql)…"
+      if docker run --rm --net=host \
+          -e PGPASSWORD="${DB_PASS}" \
+          -v "${REPO_DIR}/migrations:/migrations:ro" \
+          postgres:16-alpine \
+          psql "$KOS_DB_DSN" -f "/migrations/004_token_isolation.sql"; then
+        success "004_token_isolation.sql aplicado"
+        info "  → task_execution_log, user_notifications, columnas de auditoría en microsoft_platform_tokens"
+      else
+        error "Error aplicando migración 004_token_isolation.sql"
+        warn "Puedes aplicarla manualmente: psql \$KOS_DB_DSN < migrations/004_token_isolation.sql"
+        warn "IMPORTANTE: Esta migración es requerida para el aislamiento de tokens Microsoft."
       fi
     fi
 
