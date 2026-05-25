@@ -143,7 +143,11 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     env_file:
-      - ./frontend/.env.local
+      # required: false — Docker Compose will not abort if the file is absent
+      # at build time. On the VPS, create this file via scripts/onboarding.sh
+      # before starting the service (not needed for `docker compose build`).
+      - path: ./frontend/.env.local
+        required: false
     depends_on:
       - librarian_api
     environment:
