@@ -1,0 +1,10 @@
+# Next.js build output
+.next/
+out/
+
+# Dependencies (already covered by root, repeated for clarity)
+node_modules/
+
+# Override root rule — package-lock.json MUST be committed for the
+# frontend so that `npm ci` works inside the Docker build.
+!package-lock.json
