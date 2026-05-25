@@ -2,7 +2,14 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --ignore-scripts
+# If package-lock.json was not committed, generate it before installing.
+# `npm ci` requires a lockfile; `npm install` creates one if absent.
+RUN if [ -f package-lock.json ]; then \
+      npm ci --ignore-scripts; \
+    else \
+      echo "WARN: package-lock.json missing — running npm install (slower)" && \
+      npm install --ignore-scripts; \
+    fi
 
 # ── Stage 2: build ────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
@@ -12,6 +19,13 @@ COPY . .
 
 # Generate Prisma client
 RUN npx prisma generate
+
+# next.config.ts with TypeScript is not supported by Next.js 14 bundler.
+# Prefer next.config.mjs; remove .ts variant if both exist.
+RUN if [ -f next.config.mjs ] && [ -f next.config.ts ]; then \
+      echo "INFO: both next.config.mjs and next.config.ts found — removing .ts" && \
+      rm next.config.ts; \
+    fi
 
 # Build Next.js standalone output
 ENV NEXT_TELEMETRY_DISABLED=1

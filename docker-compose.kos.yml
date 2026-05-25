@@ -1,11 +1,30 @@
 # docker-compose.kos.yml
-# Additional services for the KOS (Knowledge Operating System) module.
-# Run alongside the main OpenClaw compose:
-#   docker compose -f docker-compose.yml -f docker-compose.kos.yml up
-
-version: "3.9"
+# All KOS services in a single file.
+# Usage (standalone, recommended for the VPS):
+#   docker compose -f docker-compose.kos.yml up -d
+#
+# The `version:` key is intentionally omitted — it is deprecated in
+# Docker Compose V2 and causes a warning on every run.
 
 services:
+
+  # ── PostgreSQL + pgvector ─────────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     openclaw
+      POSTGRES_PASSWORD: openclaw
+      POSTGRES_DB:       openclaw
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"    # localhost only — never expose publicly
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openclaw"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ── Redis — Celery broker / result backend ───────────────────────────────────
   redis:
@@ -64,6 +83,8 @@ services:
         --hostname=kos_worker@%h
     restart: unless-stopped
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       clamav:
@@ -94,6 +115,8 @@ services:
     command: python -m agents.librarian.api
     restart: unless-stopped
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
@@ -195,6 +218,8 @@ services:
         --schedule=/tmp/celerybeat-schedule
     restart: unless-stopped
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
@@ -226,7 +251,8 @@ services:
       - DATABASE_URL=${LANGFUSE_DATABASE_URL:-postgresql://openclaw:openclaw@postgres:5432/langfuse}
       - SALT=${LANGFUSE_SALT:-change-me-in-production}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/public/health || exit 1"]
       interval: 30s
@@ -235,10 +261,10 @@ services:
       start_period: 60s
 
 volumes:
+  postgres_data:
   redis_data:
   clamav_db:
   knowledge_store:
   quarantine:
   mail_data:
   rspamd_data:
-  langfuse_data:

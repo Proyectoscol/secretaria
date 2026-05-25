@@ -162,6 +162,31 @@ check_cmd() {
   fi
 }
 
+# ── Node.js — instalar automáticamente si no existe ───────────────────────────
+if ! command -v node &>/dev/null; then
+  info "Node.js no encontrado — instalando Node.js 20 LTS…"
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - >/dev/null 2>&1
+  sudo apt-get install -y nodejs >/dev/null 2>&1
+  if command -v node &>/dev/null; then
+    success "Node.js $(node --version) instalado"
+  else
+    error "No se pudo instalar Node.js. Instálalo manualmente:"
+    note "  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -"
+    note "  sudo apt-get install -y nodejs"
+    exit 1
+  fi
+else
+  success "Node.js $(node --version) encontrado"
+fi
+
+# ── tmux — instalar si no existe (para comandos largos en SSH) ────────────────
+if ! command -v tmux &>/dev/null; then
+  info "Instalando tmux (necesario para builds largos en SSH)…"
+  sudo apt-get install -y tmux >/dev/null 2>&1 && success "tmux instalado" || warn "No se pudo instalar tmux"
+else
+  success "tmux $(tmux -V 2>/dev/null | cut -d' ' -f2) encontrado"
+fi
+
 MISSING_PREREQS=0
 for cmd in docker nginx certbot openssl curl git jq; do
   if ! check_cmd "${cmd}" 2>/dev/null; then
@@ -498,28 +523,67 @@ JSON
     warn "Config anterior respaldado como ${OPENCLAW_CONFIG}.bak.*"
   fi
 
-  cat > "$OPENCLAW_CONFIG" <<EOF
-{
-  "env": {
-    "OPENROUTER_API_KEY": "${OR_API_KEY}"${LF_ENV_BLOCK}
-  },
-  "agents": {
-    "defaults": {
-      "model": {
-        "primary": "${OR_MODEL}"${FALLBACK_BLOCK}
-      },
-      "models": {
-        "${OR_MODEL}": {}${FALLBACK_MODEL_ENTRY}
-      }
-    }
-  }
-}
-EOF
+  # ── Limpiar valores antes de escribir en JSON ──────────────────────────────
+  # Las API keys pegadas por el usuario pueden contener saltos de línea,
+  # espacios y caracteres invisibles que corrumpen el JSON con heredoc.
+  # printf con %s es el único método 100% seguro para esto.
+  OR_API_KEY_CLEAN=$(echo "$OR_API_KEY" | tr -d '[:space:]' | tr -d '\r')
+  OR_MODEL_CLEAN=$(echo "$OR_MODEL"     | tr -d '\r\n')
+  if [[ -n "${OR_FALLBACK:-}" ]]; then
+    OR_FALLBACK_CLEAN=$(echo "$OR_FALLBACK" | tr -d '\r\n')
+  else
+    OR_FALLBACK_CLEAN=""
+  fi
+
+  if [[ "$LF_ENABLED" -eq 1 ]]; then
+    LF_PUBLIC_KEY_CLEAN=$(echo "$LF_PUBLIC_KEY" | tr -d '[:space:]' | tr -d '\r')
+    LF_SECRET_KEY_CLEAN=$(echo "$LF_SECRET_KEY" | tr -d '[:space:]' | tr -d '\r')
+  fi
+
+  # Build JSON with printf — no heredoc, no variable expansion surprises
+  {
+    printf '{\n'
+    printf '  "env": {\n'
+    printf '    "OPENROUTER_API_KEY": "%s"' "$OR_API_KEY_CLEAN"
+    if [[ "$LF_ENABLED" -eq 1 ]]; then
+      printf ',\n    "LANGFUSE_PUBLIC_KEY": "%s"' "$LF_PUBLIC_KEY_CLEAN"
+      printf ',\n    "LANGFUSE_SECRET_KEY": "%s"' "$LF_SECRET_KEY_CLEAN"
+      printf ',\n    "LANGFUSE_HOST": "%s"'        "$LF_HOST"
+    fi
+    printf '\n  },\n'
+    printf '  "agents": {\n'
+    printf '    "defaults": {\n'
+    printf '      "model": {\n'
+    printf '        "primary": "%s"' "$OR_MODEL_CLEAN"
+    if [[ -n "$OR_FALLBACK_CLEAN" ]]; then
+      printf ',\n        "fallbacks": ["%s"]' "$OR_FALLBACK_CLEAN"
+    fi
+    printf '\n      },\n'
+    printf '      "models": {\n'
+    printf '        "%s": {}' "$OR_MODEL_CLEAN"
+    if [[ -n "$OR_FALLBACK_CLEAN" ]]; then
+      printf ',\n        "%s": {}' "$OR_FALLBACK_CLEAN"
+    fi
+    printf '\n      }\n'
+    printf '    }\n'
+    printf '  }\n'
+    printf '}\n'
+  } > "$OPENCLAW_CONFIG"
+
   chmod 600 "$OPENCLAW_CONFIG"
   success "~/.openclaw/openclaw.json escrito (permisos 600)"
 
-  # Quick format validation
-  if command -v jq &>/dev/null; then
+  # Validate JSON before continuing
+  if command -v python3 &>/dev/null; then
+    if python3 -m json.tool "$OPENCLAW_CONFIG" >/dev/null 2>&1; then
+      success "JSON válido ✓"
+    else
+      error "El JSON generado no es válido — escribiendo versión mínima de emergencia"
+      printf '{\n  "env": {\n    "OPENROUTER_API_KEY": "%s"\n  },\n  "agents": {\n    "defaults": {\n      "model": {\n        "primary": "anthropic/claude-sonnet-4-5"\n      }\n    }\n  }\n}\n' \
+        "$OR_API_KEY_CLEAN" > "$OPENCLAW_CONFIG"
+      warn "JSON mínimo escrito. Verifica y edita manualmente: nano ${OPENCLAW_CONFIG}"
+    fi
+  elif command -v jq &>/dev/null; then
     if jq empty "$OPENCLAW_CONFIG" 2>/dev/null; then
       success "JSON válido ✓"
     else
@@ -627,6 +691,36 @@ run_migration "002_users_auth.sql"
 # SECCIÓN 9/12 — Build y migraciones de Prisma (Next.js)
 # =============================================================================
 header "9/12 — Build del frontend (Prisma + Next.js)"
+
+info "Preparando frontend para el build (scripts/prebuild.sh)…"
+bash "${REPO_DIR}/scripts/prebuild.sh" "${REPO_DIR}/frontend"
+
+info "Verificando archivos críticos antes del build…"
+REQUIRED_BUILD_FILES=(
+  "frontend/next.config.mjs"
+  "frontend/tsconfig.json"
+  "frontend/package.json"
+  "frontend/app/layout.tsx"
+  "frontend/app/(app)/layout.tsx"
+  "frontend/app/(auth)/error/page.tsx"
+  "frontend/stores/chat.ts"
+  "frontend/lib/auth.ts"
+  "frontend/components/chat/MessageBubble.tsx"
+  "frontend/components/chat/ChatInput.tsx"
+  "frontend/components/chat/LibrarianStatusBar.tsx"
+)
+BUILD_FILES_OK=true
+for _f in "${REQUIRED_BUILD_FILES[@]}"; do
+  if [[ ! -f "${REPO_DIR}/${_f}" ]]; then
+    error "Falta: ${_f}"
+    BUILD_FILES_OK=false
+  fi
+done
+if [[ "$BUILD_FILES_OK" = false ]]; then
+  error "Archivos críticos faltantes — el build fallará. Revisa la lista anterior."
+  exit 1
+fi
+success "Todos los archivos críticos presentes ✓"
 
 info "Construyendo imagen Docker del frontend…"
 info "Primera vez: puede tardar 5-10 minutos (descarga node:20-alpine, npm install)."
@@ -836,8 +930,18 @@ else
     echo
     info "── Buzón del Secretario IA ──────────────────────────────────────"
     MAIL_ADDRESS=$(prompt_optional "Dirección del Secretario" "secretaria@${MAIL_DOMAIN}")
-    MAIL_PASS=$(prompt_secret "Contraseña del buzón")
+    MAIL_PASS=$(prompt_secret "Contraseña del buzón (mín 12 caracteres)")
     MAIL_DISPLAY=$(prompt_optional "Nombre del Secretario" "Secretaria IA")
+
+    echo
+    info "── Dominios autorizados para enviar correos al Secretario ───────"
+    note "  Separa múltiples dominios con coma. Ej: empresa.com,cliente.co"
+    note "  Solo correos de estos dominios serán procesados por el Secretario."
+    MAIL_AUTHORIZED_DOMAINS=$(prompt_optional "Dominios autorizados" "${MAIL_DOMAIN}")
+    while [[ -z "$MAIL_AUTHORIZED_DOMAINS" ]]; do
+      warn "Debes ingresar al menos un dominio autorizado."
+      MAIL_AUTHORIZED_DOMAINS=$(prompt_optional "Dominios autorizados" "${MAIL_DOMAIN}")
+    done
 
     # ── 5. Verificar puerto 25 ────────────────────────────────────────────
     echo
@@ -864,6 +968,7 @@ MAIL_DOMAIN=${MAIL_DOMAIN}
 MAIL_SECRETARIO_ADDRESS=${MAIL_ADDRESS}
 MAIL_SECRETARIO_PASSWORD=${MAIL_PASS}
 MAIL_SECRETARIO_DISPLAY_NAME=${MAIL_DISPLAY}
+MAIL_AUTHORIZED_DOMAINS=${MAIL_AUTHORIZED_DOMAINS}
 MAIL_RECEIVE_MODE=imap
 MAIL_POLL_INTERVAL_SECONDS=30
 MAIL_MAX_DAILY_OUTBOUND=500
@@ -872,9 +977,33 @@ MAIL_SMTP_HOST=postfix
 MAIL_SMTP_PORT=587
 MAIL_IMAP_HOST=dovecot
 MAIL_IMAP_PORT=993
+MAIL_REPORT_RECIPIENTS_DAILY=${MAIL_ADDRESS}
 MAILENV
     chmod 600 "$KOS_ENV_FILE"
     success "Variables de correo guardadas en .env.kos"
+
+    # ── DNS guidance table ────────────────────────────────────────────────
+    echo ""
+    echo -e "${BOLD}${CYAN}═══ DNS — Registros requeridos en tu proveedor de dominio ═══${RESET}"
+    echo ""
+    echo "  Configura estos registros en tu proveedor (Hostinger, GoDaddy, Cloudflare…)."
+    echo "  Los servicios NO funcionarán hasta tener DNS correcto."
+    echo ""
+    echo -e "  ${DIM}┌──────┬──────────────────────────────┬──────────────────────────────┐${RESET}"
+    echo -e "  ${DIM}│ Tipo │ Nombre                       │ Valor                        │${RESET}"
+    echo -e "  ${DIM}├──────┼──────────────────────────────┼──────────────────────────────┤${RESET}"
+    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "A"     "@"                           "${VPS_IP:-<tu-ip-vps>}"
+    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "A"     "mail"                         "${VPS_IP:-<tu-ip-vps>}"
+    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "A"     "www"                          "${VPS_IP:-<tu-ip-vps>}"
+    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "MX"    "@"                           "10 mail.${MAIL_DOMAIN}"
+    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "TXT"   "@"                           "v=spf1 mx -all"
+    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "TXT"   "openclaw._domainkey"          "[ver DKIM arriba]"
+    echo -e "  ${DIM}└──────┴──────────────────────────────┴──────────────────────────────┘${RESET}"
+    echo ""
+    echo -e "  ${YELLOW}⚠  PTR (reverse DNS):${RESET} configura en Hostinger → VPS → Reverse DNS"
+    echo -e "     Valor: ${BOLD}mail.${MAIL_DOMAIN}${RESET}"
+    echo ""
+    note "  Verificar DNS después: bash scripts/dns_check.sh ${MAIL_DOMAIN} ${VPS_IP:-<ip>}"
 
     # ── 7. Aplicar migraciones de correo y seguridad ──────────────────────
     echo

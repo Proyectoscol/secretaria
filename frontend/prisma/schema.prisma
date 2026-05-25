@@ -104,8 +104,7 @@ model MicrosoftPlatformToken {
   useCount              Int       @default(0) @map("use_count")
   lastUsedAt            DateTime? @map("last_used_at")
 
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  notifications     UserNotification[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("microsoft_platform_tokens")
 }
