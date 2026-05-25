@@ -20,21 +20,31 @@
 #   9  Frontend build (Prisma + Next.js)
 #  10  All KOS services start
 #  11  Nginx + Let's Encrypt SSL
-#  12  Final health-check & summary
+#  12  Mail — Secretario IA (Postfix + Dovecot + OpenDKIM)
+#  13  Final health-check & summary
 # =============================================================================
 
 set -euo pipefail
 
 # ─── Colours ─────────────────────────────────────────────────────────────────
-RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
-CYAN='\033[0;36m'; BOLD='\033[1m'; DIM='\033[2m'; RESET='\033[0m'
+# Use $'...' (ANSI-C quoting) so variables hold the actual ESC byte (0x1B),
+# not the literal string \033. This makes them work in heredocs, printf format
+# strings, and echo without -e — not just echo -e.
+RED=$'\033[0;31m'; YELLOW=$'\033[1;33m'; GREEN=$'\033[0;32m'
+CYAN=$'\033[0;36m'; BOLD=$'\033[1m'; DIM=$'\033[2m'; RESET=$'\033[0m'
 
-info()    { echo -e "${CYAN}[INFO]${RESET} $*"; }
-success() { echo -e "${GREEN}[ OK ]${RESET} $*"; }
-warn()    { echo -e "${YELLOW}[WARN]${RESET} $*"; }
-error()   { echo -e "${RED}[ ERR]${RESET} $*"; }
-header()  { echo -e "\n${BOLD}${CYAN}═══ $* ═══${RESET}\n"; }
-note()    { echo -e "${DIM}      $*${RESET}"; }
+# ALL display functions write to stderr.
+# This is critical: several places call prompt_secret / prompt / pick_one via
+# command substitution — $(prompt_secret "...").  Any output that goes to
+# stdout inside those calls gets captured into the variable.  If warn() wrote
+# to stdout (e.g. after a confirm-mismatch) the ANSI ESC bytes would end up
+# embedded in an API key, making the generated JSON invalid.
+info()    { echo "${CYAN}[INFO]${RESET} $*" >&2; }
+success() { echo "${GREEN}[ OK ]${RESET} $*" >&2; }
+warn()    { echo "${YELLOW}[WARN]${RESET} $*" >&2; }
+error()   { echo "${RED}[ ERR]${RESET} $*" >&2; }
+header()  { echo -e "\n${BOLD}${CYAN}═══ $* ═══${RESET}\n" >&2; }
+note()    { echo "${DIM}      $*${RESET}" >&2; }
 
 confirm() {
   local prompt="${1:-Continuar?}"
@@ -44,7 +54,7 @@ confirm() {
     case "${answer,,}" in
       s|si|sí|y|yes) return 0 ;;
       n|no|"")        return 1 ;;
-      *) echo "  Escribe 's' para sí o 'n' para no." ;;
+      *) echo "  Escribe 's' para sí o 'n' para no." >&2 ;;
     esac
   done
 }
@@ -77,19 +87,19 @@ prompt_secret() {
   local prompt_text="$1"
   local value confirm_value
   while true; do
-    read -rsp "$(echo -e "${CYAN}  ${prompt_text}: ${RESET}")" value; echo
-    read -rsp "$(echo -e "${CYAN}  Confirmar: ${RESET}")" confirm_value; echo
+    read -rsp "$(echo "${CYAN}  ${prompt_text}: ${RESET}")" value; echo >&2
+    read -rsp "$(echo "${CYAN}  Confirmar: ${RESET}")" confirm_value; echo >&2
     [[ "$value" == "$confirm_value" ]] && break
     warn "Los valores no coinciden. Intenta nuevamente."
   done
-  echo "$value"
+  printf '%s' "$value"   # printf avoids trailing newline; only the secret on stdout
 }
 
 prompt_secret_optional() {
   local prompt_text="$1"
   local value
-  read -rsp "$(echo -e "${CYAN}  ${prompt_text} (Enter para omitir): ${RESET}")" value; echo
-  echo "$value"
+  read -rsp "$(echo "${CYAN}  ${prompt_text} (Enter para omitir): ${RESET}")" value; echo >&2
+  printf '%s' "$value"
 }
 
 pick_one() {
@@ -152,9 +162,9 @@ if ! confirm "¿Listo para comenzar?"; then
 fi
 
 # =============================================================================
-# SECCIÓN 1/12 — Prerequisitos del sistema
+# SECCIÓN 1/13 — Prerequisitos del sistema
 # =============================================================================
-header "1/12 — Verificando prerequisitos del sistema"
+header "1/13 — Verificando prerequisitos del sistema"
 
 check_cmd() {
   if command -v "$1" &>/dev/null; then
@@ -250,9 +260,9 @@ else
 fi
 
 # =============================================================================
-# SECCIÓN 2/12 — Repositorio
+# SECCIÓN 2/13 — Repositorio
 # =============================================================================
-header "2/12 — Repositorio"
+header "2/13 — Repositorio"
 
 if [[ -f "${REPO_DIR}/docker-compose.kos.yml" ]]; then
   success "Repositorio encontrado en: ${REPO_DIR}"
@@ -267,9 +277,9 @@ fi
 cd "$REPO_DIR"
 
 # =============================================================================
-# SECCIÓN 3/12 — Variables de entorno
+# SECCIÓN 3/13 — Variables de entorno
 # =============================================================================
-header "3/12 — Variables de entorno (KOS + frontend)"
+header "3/13 — Variables de entorno (KOS + frontend)"
 
 echo "Necesitarás los datos de tus dos aplicaciones de Microsoft Azure:"
 echo "  • App 1: solo autenticación (openid profile email User.Read)"
@@ -368,9 +378,9 @@ chmod 600 "$KOS_ENV_FILE"
 success ".env.kos creado"
 
 # =============================================================================
-# SECCIÓN 4/12 — OpenRouter (gestión de modelos y tokens)
+# SECCIÓN 4/13 — OpenRouter (gestión de modelos y tokens)
 # =============================================================================
-header "4/12 — OpenRouter — Gestión de modelos de IA"
+header "4/13 — OpenRouter — Gestión de modelos de IA"
 
 cat <<'OPENROUTER_INTRO'
   OpenRouter es un proxy unificado de LLMs que permite:
@@ -422,9 +432,9 @@ else
 fi
 
 # =============================================================================
-# SECCIÓN 5/12 — Langfuse (observabilidad y trazas de LLM)
+# SECCIÓN 5/13 — Langfuse (observabilidad y trazas de LLM)
 # =============================================================================
-header "5/12 — Langfuse — Observabilidad de LLM"
+header "5/13 — Langfuse — Observabilidad de LLM"
 
 cat <<'LANGFUSE_INTRO'
   Langfuse registra cada llamada LLM: prompts, razonamientos, tool-calls,
@@ -617,9 +627,9 @@ else
 fi
 
 # =============================================================================
-# SECCIÓN 6/12 — Servicios de infraestructura (Redis, ClamAV, GROBID)
+# SECCIÓN 6/13 — Servicios de infraestructura (Redis, ClamAV, GROBID)
 # =============================================================================
-header "6/12 — Servicios de infraestructura"
+header "6/13 — Servicios de infraestructura"
 
 info "Levantando Redis, ClamAV, GROBID…"
 info "Primera vez: ClamAV descarga ~200 MB de definiciones de virus. Ten paciencia."
@@ -658,9 +668,9 @@ fi
 success "Infraestructura iniciada"
 
 # =============================================================================
-# SECCIÓN 7/12 — pgweb (inspector de BD opcional)
+# SECCIÓN 7/13 — pgweb (inspector de BD opcional)
 # =============================================================================
-header "7/12 — Inspector de base de datos (opcional)"
+header "7/13 — Inspector de base de datos (opcional)"
 
 if confirm "¿Levantar pgweb para inspeccionar la BD desde el navegador?"; then
   docker run -d --name kos-pgweb \
@@ -674,9 +684,9 @@ else
 fi
 
 # =============================================================================
-# SECCIÓN 8/12 — Migraciones de base de datos
+# SECCIÓN 8/13 — Migraciones de base de datos
 # =============================================================================
-header "8/12 — Migraciones de base de datos"
+header "8/13 — Migraciones de base de datos"
 
 info "Verificando conexión a PostgreSQL…"
 DB_PASS=$(echo "$DB_URL" | grep -oP '(?<=:)[^:@]+(?=@)' || true)
@@ -704,9 +714,9 @@ run_migration "001_kos_schema.sql"
 run_migration "002_users_auth.sql"
 
 # =============================================================================
-# SECCIÓN 9/12 — Build y migraciones de Prisma (Next.js)
+# SECCIÓN 9/13 — Build y migraciones de Prisma (Next.js)
 # =============================================================================
-header "9/12 — Build del frontend (Prisma + Next.js)"
+header "9/13 — Build del frontend (Prisma + Next.js)"
 
 info "Preparando frontend para el build (scripts/prebuild.sh)…"
 bash "${REPO_DIR}/scripts/prebuild.sh" "${REPO_DIR}/frontend"
@@ -760,13 +770,13 @@ docker run --rm --net=host \
 docker run --rm --net=host \
   --env-file "$ENV_FILE" \
   kos-frontend:latest \
-  npx prisma db push --skip-generate
+  npx prisma db push --accept-data-loss
 success "Migraciones Prisma aplicadas"
 
 # =============================================================================
-# SECCIÓN 10/12 — Todos los servicios KOS
+# SECCIÓN 10/13 — Todos los servicios KOS
 # =============================================================================
-header "10/12 — Iniciando todos los servicios KOS"
+header "10/13 — Iniciando todos los servicios KOS"
 
 info "Construyendo imagen Python (Dockerfile.kos)…"
 info "Primera vez: descarga sentence-transformers (~400 MB). Sé paciente."
@@ -802,9 +812,9 @@ for i in $(seq 1 30); do
 done
 
 # =============================================================================
-# SECCIÓN 11/12 — Nginx + SSL
+# SECCIÓN 11/13 — Nginx + SSL
 # =============================================================================
-header "11/12 — Nginx + SSL (Let's Encrypt)"
+header "11/13 — Nginx + SSL (Let's Encrypt)"
 
 info "Configurando Nginx para ${DOMAIN}…"
 
