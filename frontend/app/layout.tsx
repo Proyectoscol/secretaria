@@ -1,8 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Sora, Plus_Jakarta_Sans } from "next/font/google";
+import { Sora, Plus_Jakarta_Sans, Inter } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "sonner";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+
+// Geist is Vercel-only and not available in next/font/google — use Inter instead
+const geist = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 const sora = Sora({
   subsets: ["latin"],
@@ -35,7 +39,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${sora.variable} ${jakarta.variable} dark`} suppressHydrationWarning>
+    <html lang="es" className={cn("dark", sora.variable, jakarta.variable, "font-sans", geist.variable)} suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
         <SessionProvider>
           {children}
