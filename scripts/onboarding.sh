@@ -47,10 +47,14 @@ header()  { echo -e "\n${BOLD}${CYAN}═══ $* ═══${RESET}\n" >&2; }
 note()    { echo "${DIM}      $*${RESET}" >&2; }
 
 confirm() {
+  # Print prompt to stderr, read with no -p argument.
+  # Using read -p "$(echo ...)" with ESC sequences mis-positions the cursor
+  # because bash's read -p doesn't account for non-printable bytes in length.
   local prompt="${1:-Continuar?}"
   local answer
   while true; do
-    read -rp "$(echo -e "${YELLOW}  ${prompt} [s/N]: ${RESET}")" answer
+    printf '%s' "${YELLOW}  ${prompt} [s/N]: ${RESET}" >&2
+    read -r answer
     case "${answer,,}" in
       s|si|sí|y|yes) return 0 ;;
       n|no|"")        return 1 ;;
@@ -64,11 +68,13 @@ prompt() {
   local _var="$1" prompt_text="$2" default="${3:-}"
   local value
   if [[ -n "$default" ]]; then
-    read -rp "$(echo -e "${CYAN}  ${prompt_text} [${default}]: ${RESET}")" value
+    printf '%s' "${CYAN}  ${prompt_text} [${default}]: ${RESET}" >&2
+    read -r value
     echo "${value:-$default}"
   else
     while true; do
-      read -rp "$(echo -e "${CYAN}  ${prompt_text}: ${RESET}")" value
+      printf '%s' "${CYAN}  ${prompt_text}: ${RESET}" >&2
+      read -r value
       [[ -n "$value" ]] && break
       warn "Este campo es obligatorio."
     done
@@ -79,7 +85,8 @@ prompt() {
 prompt_optional() {
   local prompt_text="$1" default="${2:-}"
   local value
-  read -rp "$(echo -e "${CYAN}  ${prompt_text} [${default:-(dejar vacío)}]: ${RESET}")" value
+  printf '%s' "${CYAN}  ${prompt_text} [${default:-(dejar vacío)}]: ${RESET}" >&2
+  read -r value
   echo "${value:-$default}"
 }
 
@@ -87,42 +94,48 @@ prompt_secret() {
   local prompt_text="$1"
   local value confirm_value
   while true; do
-    read -rsp "$(echo "${CYAN}  ${prompt_text}: ${RESET}")" value; echo >&2
-    read -rsp "$(echo "${CYAN}  Confirmar: ${RESET}")" confirm_value; echo >&2
+    # Print colored prompt via printf to stderr; read silently with no -p prompt.
+    # This avoids readline cursor-position bugs when ESC sequences appear in -p.
+    printf '%s' "${CYAN}  ${prompt_text}: ${RESET}" >&2
+    read -rsp "" value; echo >&2
+    printf '%s' "${CYAN}  Confirmar: ${RESET}" >&2
+    read -rsp "" confirm_value; echo >&2
     [[ "$value" == "$confirm_value" ]] && break
     warn "Los valores no coinciden. Intenta nuevamente."
   done
-  printf '%s' "$value"   # printf avoids trailing newline; only the secret on stdout
+  printf '%s' "$value"   # only the secret on stdout; no trailing newline
 }
 
 prompt_secret_optional() {
   local prompt_text="$1"
   local value
-  read -rsp "$(echo "${CYAN}  ${prompt_text} (Enter para omitir): ${RESET}")" value; echo >&2
+  printf '%s' "${CYAN}  ${prompt_text} (Enter para omitir): ${RESET}" >&2
+  read -rsp "" value; echo >&2
   printf '%s' "$value"
 }
 
 pick_one() {
   # pick_one "Prompt" "opt1" "opt2" "opt3" …  → returns chosen value on stdout
   #
-  # IMPORTANT: ALL display output goes to stderr so that the return value
-  # captured via $(pick_one ...) contains ONLY the selected option and nothing
-  # else. Without this, numbered menu lines get prepended to the value.
+  # ALL display output goes to stderr so $(pick_one ...) captures only the
+  # selected value. Prompt printed via printf (not read -p) for same reason
+  # as the other input helpers above.
   local prompt_text="$1"; shift
   local options=("$@")
   local i=1
-  echo -e "${CYAN}  ${prompt_text}${RESET}" >&2
+  echo "${CYAN}  ${prompt_text}${RESET}" >&2
   for opt in "${options[@]}"; do
-    echo -e "    ${BOLD}$i)${RESET} $opt" >&2
+    echo "    ${BOLD}$i)${RESET} $opt" >&2
     (( i++ ))
   done
   while true; do
-    read -rp "$(echo -e "${YELLOW}  Elige [1-${#options[@]}]: ${RESET}")" choice
+    printf '%s' "${YELLOW}  Elige [1-${#options[@]}]: ${RESET}" >&2
+    read -r choice
     if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#options[@]} )); then
       echo "${options[$(( choice - 1 ))]}"   # stdout only — the chosen value
       return
     fi
-    warn "Opción inválida." >&2
+    warn "Opción inválida."
   done
 }
 
@@ -763,15 +776,29 @@ docker build \
 success "Imagen kos-frontend:latest construida"
 
 info "Aplicando migraciones Prisma…"
-docker run --rm --net=host \
-  --env-file "$ENV_FILE" \
-  kos-frontend:latest \
-  npx prisma migrate deploy 2>/dev/null || \
-docker run --rm --net=host \
-  --env-file "$ENV_FILE" \
-  kos-frontend:latest \
-  npx prisma db push --accept-data-loss
-success "Migraciones Prisma aplicadas"
+# The kos-frontend:latest runner image only has the Next.js standalone build —
+# no prisma/schema.prisma and no node_modules/.bin/prisma.
+# Run prisma directly on the host (Node.js is guaranteed by section 1).
+# Use the exact version from frontend/package.json to avoid Prisma 7.x API
+# breakage (7.x changed the schema-discovery flow and removed --skip-generate).
+PRISMA_SCHEMA="${REPO_DIR}/frontend/prisma/schema.prisma"
+if [[ ! -f "$PRISMA_SCHEMA" ]]; then
+  warn "prisma/schema.prisma no encontrado — omitiendo migraciones Prisma"
+else
+  PRISMA_VER=$(jq -r '.dependencies.prisma // .devDependencies.prisma // "5"' \
+    "${REPO_DIR}/frontend/package.json" 2>/dev/null | tr -d '\r\n' || echo "5")
+  info "Usando Prisma ${PRISMA_VER} (desde package.json)…"
+  (
+    cd "${REPO_DIR}/frontend"
+    DATABASE_URL="${DB_URL}" \
+      npx -y "prisma@${PRISMA_VER}" migrate deploy \
+        --schema="prisma/schema.prisma" \
+    || DATABASE_URL="${DB_URL}" \
+      npx -y "prisma@${PRISMA_VER}" db push \
+        --schema="prisma/schema.prisma" --accept-data-loss
+  )
+  success "Migraciones Prisma aplicadas"
+fi
 
 # =============================================================================
 # SECCIÓN 10/13 — Todos los servicios KOS
