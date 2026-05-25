@@ -1067,16 +1067,18 @@ MAILENV
     # ── 7. Aplicar migraciones de correo y seguridad ──────────────────────
     echo
     if confirm "¿Aplicar migraciones de base de datos para el sistema de correo y seguridad? (003 + 004)"; then
-      DB_PASS=$(echo "$KOS_DB_DSN" | grep -oP '(?<=:)[^:@]+(?=@)' || true)
+      # $DB_URL is the PostgreSQL DSN set as a shell variable in section 3.
+      # $KOS_DB_DSN is only a file variable in .env.kos — not available in the shell.
+      DB_PASS=$(echo "$DB_URL" | grep -oP '(?<=:)[^:@]+(?=@)' || true)
       if docker run --rm --net=host \
           -e PGPASSWORD="${DB_PASS}" \
           -v "${REPO_DIR}/migrations:/migrations:ro" \
           postgres:16-alpine \
-          psql "$KOS_DB_DSN" -f "/migrations/003_mail_schema.sql"; then
+          psql "$DB_URL" -f "/migrations/003_mail_schema.sql"; then
         success "003_mail_schema.sql aplicado"
       else
         error "Error aplicando migración 003_mail_schema.sql"
-        warn "Puedes aplicarla manualmente: psql \$KOS_DB_DSN < migrations/003_mail_schema.sql"
+        warn "Puedes aplicarla manualmente: psql \$DB_URL < migrations/003_mail_schema.sql"
       fi
 
       # 004 — token isolation, audit log, notifications
@@ -1086,33 +1088,36 @@ MAILENV
           -e PGPASSWORD="${DB_PASS}" \
           -v "${REPO_DIR}/migrations:/migrations:ro" \
           postgres:16-alpine \
-          psql "$KOS_DB_DSN" -f "/migrations/004_token_isolation.sql"; then
+          psql "$DB_URL" -f "/migrations/004_token_isolation.sql"; then
         success "004_token_isolation.sql aplicado"
         info "  → task_execution_log, user_notifications, columnas de auditoría en microsoft_platform_tokens"
       else
         error "Error aplicando migración 004_token_isolation.sql"
-        warn "Puedes aplicarla manualmente: psql \$KOS_DB_DSN < migrations/004_token_isolation.sql"
+        warn "Puedes aplicarla manualmente: psql \$DB_URL < migrations/004_token_isolation.sql"
         warn "IMPORTANTE: Esta migración es requerida para el aislamiento de tokens Microsoft."
       fi
     fi
 
     # ── 8. Levantar servicios de correo ───────────────────────────────────
+    # --env-file is required here: compose maps MAIL_SECRETARIO_ADDRESS/PASSWORD
+    # from the env file, but the shell variables use different names ($MAIL_ADDRESS,
+    # $MAIL_PASS). Without --env-file the services would start with empty credentials.
     echo
     info "Construyendo y levantando servicios de correo…"
     info "(Primera vez: puede tardar 2-3 minutos)"
-    docker compose -f "${REPO_DIR}/docker-compose.kos.yml" up -d \
+    docker compose --env-file "$KOS_ENV_FILE" -f "${REPO_DIR}/docker-compose.kos.yml" up -d \
       postfix dovecot opendkim rspamd celery_beat
 
     # Health check
     sleep 10
-    if docker compose -f "${REPO_DIR}/docker-compose.kos.yml" ps postfix 2>/dev/null \
+    if docker compose --env-file "$KOS_ENV_FILE" -f "${REPO_DIR}/docker-compose.kos.yml" ps postfix 2>/dev/null \
         | grep -q "Up\|running"; then
       success "Postfix activo"
     else
       warn "Postfix no confirmado — revisa: docker compose logs postfix"
     fi
 
-    if docker compose -f "${REPO_DIR}/docker-compose.kos.yml" ps dovecot 2>/dev/null \
+    if docker compose --env-file "$KOS_ENV_FILE" -f "${REPO_DIR}/docker-compose.kos.yml" ps dovecot 2>/dev/null \
         | grep -q "Up\|running"; then
       success "Dovecot activo"
     else
