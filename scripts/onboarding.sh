@@ -814,7 +814,7 @@ docker build \
 success "Imagen kos-python:latest construida"
 
 info "Levantando celery_worker, librarian_api y frontend…"
-docker compose -f docker-compose.kos.yml up -d celery_worker librarian_api frontend
+docker compose --env-file "$KOS_ENV_FILE" -f docker-compose.kos.yml up -d celery_worker librarian_api frontend
 success "Servicios KOS iniciados"
 
 info "Esperando al Librarian API (puerto 8001)…"
@@ -827,7 +827,8 @@ for i in $(seq 1 30); do
 done
 if [[ "$LIBRARIAN_READY" -eq 0 ]]; then
   error "Librarian API no respondió en 90s."
-  error "Revisa: docker compose -f docker-compose.kos.yml logs librarian_api"
+  error "Últimas líneas del log:"
+  docker compose --env-file "$KOS_ENV_FILE" -f docker-compose.kos.yml logs --tail=40 librarian_api >&2 || true
   exit 1
 fi
 success "Librarian API OK"

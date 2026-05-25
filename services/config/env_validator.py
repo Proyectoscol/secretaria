@@ -31,10 +31,13 @@ from urllib.parse import urlparse
 
 # ── Validators ────────────────────────────────────────────────────────────────
 
+_VALID_URL_SCHEMES = {"http", "https", "postgresql", "postgres", "redis", "rediss", "amqp", "amqps"}
+
+
 def _is_url(value: str) -> bool:
     try:
         result = urlparse(value)
-        return result.scheme in ("http", "https") and bool(result.netloc)
+        return result.scheme in _VALID_URL_SCHEMES and bool(result.netloc)
     except Exception:
         return False
 
