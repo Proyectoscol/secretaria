@@ -279,10 +279,18 @@ header "2/13 — Repositorio"
 
 if [[ -f "${REPO_DIR}/docker-compose.kos.yml" ]]; then
   success "Repositorio encontrado en: ${REPO_DIR}"
+  # Always pull latest fixes before building images.
+  # Without this, re-runs would build Docker images from stale source code.
+  info "Actualizando repositorio (git pull)…"
+  if git -C "$REPO_DIR" pull --ff-only 2>&1 | grep -v "^$" >&2; then
+    success "Repositorio actualizado"
+  else
+    warn "git pull falló (puede que haya cambios locales sin commit). Continuando con la versión actual."
+  fi
 else
   info "No se encontró el repositorio en el directorio actual."
   CLONE_DIR=$(prompt CLONE_DIR "Directorio de destino" "/opt/kos")
-  REPO_URL=$(prompt REPO_URL "URL del repositorio Git" "https://github.com/openclaw/openclaw")
+  REPO_URL=$(prompt REPO_URL "URL del repositorio Git" "https://github.com/Proyectoscol/secretaria")
   git clone "$REPO_URL" "$CLONE_DIR"
   REPO_DIR="$CLONE_DIR"
   success "Repositorio clonado en $REPO_DIR"
