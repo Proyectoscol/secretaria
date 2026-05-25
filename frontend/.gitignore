@@ -5,6 +5,7 @@ out/
 # Dependencies (already covered by root, repeated for clarity)
 node_modules/
 
-# Override root rule — package-lock.json MUST be committed for the
-# frontend so that `npm ci` works inside the Docker build.
+# Override root rules — these files MUST be committed for Docker builds.
+# The root .gitignore (OpenClaw monorepo) blocks both; force-tracked with git add -f.
 !package-lock.json
+!.gitignore
