@@ -51,33 +51,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden relative"
-         style={{ background: "oklch(0.145 0 0)" }}>
+    <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden relative bg-background">
 
-      {/* ── Mesh gradient background ──────────────────────────────────────── */}
+      {/* ── Subtle background accents ─────────────────────────────────────── */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        {/* Top-left indigo glow */}
+        {/* Top-right indigo bloom */}
         <div
-          className="absolute -top-60 -left-60 w-[600px] h-[600px] rounded-full blur-[140px]"
-          style={{ background: "oklch(0.62 0.22 264)", opacity: 0.07 }}
+          className="absolute -top-80 -right-80 w-[700px] h-[700px] rounded-full blur-[160px]"
+          style={{ background: "oklch(0.62 0.22 264)", opacity: 0.08 }}
         />
-        {/* Bottom-right violet glow */}
+        {/* Bottom-left violet bloom */}
         <div
-          className="absolute -bottom-60 -right-60 w-[600px] h-[600px] rounded-full blur-[140px]"
+          className="absolute -bottom-60 -left-60 w-[600px] h-[600px] rounded-full blur-[140px]"
           style={{ background: "oklch(0.55 0.24 290)", opacity: 0.06 }}
         />
-        {/* Centre soft pulse */}
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-[200px]"
-          style={{ background: "oklch(0.62 0.22 264)", opacity: 0.03 }}
-        />
-        {/* Subtle grid */}
+        {/* Dot grid */}
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage:
-              "linear-gradient(oklch(1 0 0 / 0.015) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / 0.015) 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
+            backgroundImage: "radial-gradient(oklch(0.52 0.22 264 / 0.07) 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
           }}
         />
       </div>
@@ -95,8 +88,8 @@ export default function LoginPage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5 bg-primary shadow-2xl"
-            style={{ boxShadow: "0 8px 32px oklch(0.62 0.22 264 / 0.35)" }}
+            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5 bg-primary"
+            style={{ boxShadow: "0 8px 32px oklch(0.52 0.22 264 / 0.28)" }}
           >
             <span className="font-display text-2xl font-black text-primary-foreground select-none">K</span>
           </motion.div>
@@ -110,21 +103,10 @@ export default function LoginPage() {
         </div>
 
         {/* Glass card */}
-        <div
-          className="rounded-2xl p-8 shadow-2xl"
-          style={{
-            background: "oklch(0.205 0 0 / 0.7)",
-            backdropFilter: "blur(20px) saturate(150%)",
-            WebkitBackdropFilter: "blur(20px) saturate(150%)",
-            border: "1px solid oklch(1 0 0 / 0.08)",
-            boxShadow: "0 32px 64px oklch(0 0 0 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.06)",
-          }}
-        >
+        <div className="rounded-2xl p-8 bg-card border border-border shadow-lg shadow-foreground/5">
           <div className="text-center mb-6 space-y-1">
-            <p className="text-sm font-semibold" style={{ color: "oklch(0.985 0 0)" }}>
-              Iniciar sesión
-            </p>
-            <p className="text-xs" style={{ color: "oklch(0.556 0 0)" }}>
+            <p className="text-sm font-semibold text-foreground">Iniciar sesión</p>
+            <p className="text-xs text-muted-foreground">
               Usa tu cuenta corporativa de Microsoft
             </p>
           </div>
@@ -137,22 +119,13 @@ export default function LoginPage() {
             className="
               w-full flex items-center justify-center gap-3
               h-11 px-5 rounded-xl
-              text-sm font-medium
+              text-sm font-medium text-foreground
+              bg-secondary border border-border
+              hover:bg-secondary/70
               transition-all duration-150
               disabled:opacity-60 disabled:cursor-not-allowed
-              focus-visible:outline-none
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
             "
-            style={{
-              background: "oklch(0.269 0 0)",
-              border: "1px solid oklch(1 0 0 / 0.1)",
-              color: "oklch(0.985 0 0)",
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) (e.currentTarget as HTMLButtonElement).style.background = "oklch(0.3 0 0)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "oklch(0.269 0 0)";
-            }}
           >
             {loading ? (
               <Loader2 size={16} className="animate-spin shrink-0" />
@@ -172,27 +145,22 @@ export default function LoginPage() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px" style={{ background: "oklch(1 0 0 / 0.07)" }} />
-            <span className="text-[11px] uppercase tracking-widest" style={{ color: "oklch(0.45 0 0)" }}>
-              o
-            </span>
-            <div className="flex-1 h-px" style={{ background: "oklch(1 0 0 / 0.07)" }} />
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-[11px] uppercase tracking-widest text-muted-foreground">o</span>
+            <div className="flex-1 h-px bg-border" />
           </div>
 
-          {/* Credentials link */}
+          {/* Admin link */}
           <a
             href="/auth/register"
             className="
               w-full flex items-center justify-center
               h-10 px-5 rounded-xl
-              text-xs font-medium
+              text-xs font-medium text-primary
+              border border-primary/30 bg-primary/5
+              hover:bg-primary/10
               transition-all duration-150
             "
-            style={{
-              color: "oklch(0.62 0.22 264)",
-              border: "1px solid oklch(0.62 0.22 264 / 0.25)",
-              background: "oklch(0.62 0.22 264 / 0.06)",
-            }}
           >
             Configuración inicial · administrador
           </a>
@@ -205,12 +173,7 @@ export default function LoginPage() {
               className="mt-4 overflow-hidden"
             >
               <p
-                className="text-xs text-center px-3 py-2.5 rounded-lg"
-                style={{
-                  background: "oklch(0.45 0.18 27 / 0.15)",
-                  border: "1px solid oklch(0.7 0.19 27 / 0.3)",
-                  color: "oklch(0.75 0.15 27)",
-                }}
+                className="text-xs text-center px-3 py-2.5 rounded-lg bg-destructive/10 border border-destructive/25 text-destructive"
                 role="alert"
               >
                 {error}
@@ -220,7 +183,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-[11px] mt-5" style={{ color: "oklch(0.42 0 0)" }}>
+        <p className="text-center text-[11px] mt-5 text-muted-foreground">
           © {new Date().getFullYear()} Proyectos Col · KOS v1
         </p>
       </motion.div>

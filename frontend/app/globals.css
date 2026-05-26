@@ -32,112 +32,109 @@
 
 @layer base {
   :root {
-    /* ── Light theme ──────────────────────────────────────────────────────── */
-    --background:          1 0 0;
-    --foreground:          0.145 0 0;
-    --card:                1 0 0;
-    --card-foreground:     0.145 0 0;
+    /* ── Light theme (default) ────────────────────────────────────────────── */
+    --background:          0.97 0.005 264;   /* very light blue-gray canvas */
+    --foreground:          0.13 0.015 264;   /* near-black with blue hint */
+    --card:                1 0 0;            /* white cards */
+    --card-foreground:     0.13 0.015 264;
     --popover:             1 0 0;
-    --popover-foreground:  0.145 0 0;
+    --popover-foreground:  0.13 0.015 264;
 
-    --primary:             0.205 0 0;   /* near-black in light; indigo in dark */
+    --primary:             0.52 0.22 264;    /* indigo — same brand, works on white */
     --primary-foreground:  0.985 0 0;
 
-    --secondary:           0.97 0 0;
-    --secondary-foreground: 0.205 0 0;
+    --secondary:           0.93 0.008 264;   /* soft blue-gray */
+    --secondary-foreground: 0.25 0.015 264;
 
-    --muted:               0.97 0 0;
-    --muted-foreground:    0.556 0 0;
+    --muted:               0.94 0.005 264;
+    --muted-foreground:    0.48 0.012 264;
 
-    --accent:              0.97 0 0;
-    --accent-foreground:   0.205 0 0;
+    --accent:              0.93 0.008 264;
+    --accent-foreground:   0.25 0.015 264;
 
     --destructive:         0.577 0.245 27.325;
     --destructive-foreground: 0.985 0 0;
 
-    --border:              0.922 0 0;
-    --border-alpha:        1;           /* solid border in light */
-    --input:               0.922 0 0;
+    --border:              0.88 0.01 264;    /* light, slight blue */
+    --border-alpha:        1;
+    --input:               0.88 0.01 264;
     --input-alpha:         1;
 
-    --ring:                0.708 0 0;
+    --ring:                0.52 0.22 264;    /* indigo focus ring */
 
-    --surface:             0.962 0.004 264;
+    --surface:             0.95 0.006 264;
     --surface-elevated:    1 0 0;
 
     --radius: 0.625rem;
 
-    /* ── Sidebar (used by shadcn sidebar components) ──────────────────────── */
-    --sidebar:              oklch(0.985 0 0);
-    --sidebar-foreground:   oklch(0.145 0 0);
-    --sidebar-primary:      oklch(0.205 0 0);
+    /* ── Sidebar ──────────────────────────────────────────────────────────── */
+    --sidebar:              oklch(1 0 0);
+    --sidebar-foreground:   oklch(0.13 0.015 264);
+    --sidebar-primary:      oklch(0.52 0.22 264);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent:       oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border:       oklch(0.922 0 0);
-    --sidebar-ring:         oklch(0.708 0 0);
+    --sidebar-accent:       oklch(0.93 0.008 264);
+    --sidebar-accent-foreground: oklch(0.25 0.015 264);
+    --sidebar-border:       oklch(0.88 0.01 264);
+    --sidebar-ring:         oklch(0.52 0.22 264);
 
     /* ── Charts ───────────────────────────────────────────────────────────── */
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    --chart-1: oklch(0.52 0.22 264);
+    --chart-2: oklch(0.45 0.18 290);
+    --chart-3: oklch(0.55 0.15 230);
+    --chart-4: oklch(0.60 0.12 210);
+    --chart-5: oklch(0.65 0.18 170);
   }
 
   .dark {
-    /* ── Dark theme (default — html carries class="dark") ─────────────────── */
-    --background:          0.145 0 0;   /* deep midnight #0b0b0f */
-    --foreground:          0.985 0 0;
-    --card:                0.205 0 0;   /* dark card #111118 */
-    --card-foreground:     0.985 0 0;
-    --popover:             0.205 0 0;
-    --popover-foreground:  0.985 0 0;
+    /* ── Dark theme (opt-in via class="dark") ─────────────────────────────── */
+    --background:          0.14 0.008 264;   /* deep indigo-midnight */
+    --foreground:          0.93 0.005 264;
+    --card:                0.19 0.01 264;    /* slightly lighter card */
+    --card-foreground:     0.93 0.005 264;
+    --popover:             0.19 0.01 264;
+    --popover-foreground:  0.93 0.005 264;
 
-    --primary:             0.62 0.22 264;   /* indigo */
+    --primary:             0.62 0.22 264;    /* indigo */
     --primary-foreground:  0.985 0 0;
 
-    --secondary:           0.269 0 0;
-    --secondary-foreground: 0.985 0 0;
+    --secondary:           0.24 0.012 264;
+    --secondary-foreground: 0.93 0.005 264;
 
-    --muted:               0.269 0 0;
-    --muted-foreground:    0.708 0 0;
+    --muted:               0.24 0.012 264;
+    --muted-foreground:    0.62 0.008 264;
 
-    --accent:              0.269 0 0;
-    --accent-foreground:   0.985 0 0;
+    --accent:              0.24 0.012 264;
+    --accent-foreground:   0.93 0.005 264;
 
     --destructive:         0.704 0.191 22.216;
     --destructive-foreground: 0.932 0.012 228;
 
-    /* Subtle semi-transparent borders in dark — companion alpha applies the
-       default transparency so border-border renders at 10% white by default,
-       while border-border/50 overrides to 50% when needed. */
     --border:              1 0 0;
     --border-alpha:        0.1;
     --input:               1 0 0;
     --input-alpha:         0.15;
 
-    --ring:                0.62 0.22 264;   /* indigo focus ring */
+    --ring:                0.62 0.22 264;
 
-    --surface:             0.168 0.01 264;
-    --surface-elevated:    0.202 0.009 264;
+    --surface:             0.17 0.012 264;
+    --surface-elevated:    0.21 0.01 264;
 
     /* Sidebar */
-    --sidebar:             oklch(0.205 0 0);
-    --sidebar-foreground:  oklch(0.985 0 0);
-    --sidebar-primary:     oklch(0.488 0.243 264.376);
+    --sidebar:             oklch(0.19 0.01 264);
+    --sidebar-foreground:  oklch(0.93 0.005 264);
+    --sidebar-primary:     oklch(0.62 0.22 264);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent:      oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-accent:      oklch(0.24 0.012 264);
+    --sidebar-accent-foreground: oklch(0.93 0.005 264);
     --sidebar-border:      oklch(1 0 0 / 10%);
     --sidebar-ring:        oklch(0.62 0.22 264);
 
     /* Charts */
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    --chart-1: oklch(0.62 0.22 264);
+    --chart-2: oklch(0.55 0.18 290);
+    --chart-3: oklch(0.60 0.15 230);
+    --chart-4: oklch(0.65 0.12 210);
+    --chart-5: oklch(0.70 0.18 170);
   }
 
   .theme {

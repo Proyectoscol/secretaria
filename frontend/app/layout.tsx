@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0b0f",
+  themeColor: "#f4f4f8",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -39,18 +39,18 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={cn("dark", sora.variable, jakarta.variable, "font-sans", geist.variable)} suppressHydrationWarning>
+    <html lang="es" className={cn(sora.variable, jakarta.variable, "font-sans", geist.variable)} suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
         <SessionProvider>
           {children}
           <Toaster
-            theme="dark"
+            theme="light"
             position="top-right"
             toastOptions={{
               style: {
-                background: "oklch(0.168 0.01 264)",
-                border: "1px solid oklch(1 0 0 / 0.1)",
-                color: "oklch(0.932 0.012 228)",
+                background: "oklch(1 0 0)",
+                border: "1px solid oklch(0.88 0.01 264)",
+                color: "oklch(0.13 0.015 264)",
                 fontFamily: "var(--font-jakarta)",
               },
             }}
