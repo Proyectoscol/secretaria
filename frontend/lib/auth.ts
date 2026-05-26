@@ -141,13 +141,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email! },
-          include: { _count: { select: { platformToken: true } } },
+          select: {
+            id: true,
+            tenantId: true,
+            role: true,
+            // platformToken is a to-one optional relation — Prisma does not support
+            // _count on singular relations (only on list relations). Use select instead.
+            platformToken: { select: { id: true } },
+          },
         });
         if (dbUser) {
           token.userId = dbUser.id;
           token.tenantId = dbUser.tenantId;
           token.role = dbUser.role;
-          token.hasPlatformToken = dbUser._count.platformToken > 0;
+          token.hasPlatformToken = dbUser.platformToken !== null;
         }
       }
       return token;
