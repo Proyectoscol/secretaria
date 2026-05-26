@@ -12,14 +12,16 @@ import {
   Menu,
   X,
   ChevronRight,
+  Mail,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/chat",    label: "Chat",      icon: MessageSquare },
+  { href: "/chat",    label: "Chat",       icon: MessageSquare },
+  { href: "/mail",    label: "Correo",     icon: Mail },
   { href: "/library", label: "Biblioteca", icon: BookOpen },
-  { href: "/settings/profile", label: "Configuración", icon: Settings },
+  { href: "/settings/profile", label: "Ajustes", icon: Settings },
 ];
 
 function NavItem({
@@ -42,9 +44,10 @@ function NavItem({
         "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150",
         "text-sm font-medium min-h-[44px]",
         active
-          ? "bg-primary/10 text-primary amber-glow"
-          : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+          ? "text-primary amber-glow"
+          : "text-muted-foreground hover:text-foreground"
       )}
+      style={active ? { background: "oklch(0.62 0.22 264 / 0.12)" } : undefined}
     >
       <Icon size={18} className="shrink-0" />
       <AnimatePresence initial={false}>
@@ -132,7 +135,10 @@ export function AppSidebar() {
         >
           <Avatar className="h-7 w-7 shrink-0">
             <AvatarImage src={user?.image ?? ""} />
-            <AvatarFallback className="text-xs bg-primary/20 text-primary font-semibold">
+            <AvatarFallback
+              className="text-xs font-semibold text-primary"
+              style={{ background: "oklch(0.62 0.22 264 / 0.2)" }}
+            >
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -195,7 +201,7 @@ export function AppSidebar() {
                   className={cn(
                     "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[48px]",
                     pathname.startsWith(href)
-                      ? "bg-primary/10 text-primary"
+                      ? "text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                   )}
                 >
@@ -219,14 +225,18 @@ export function AppSidebar() {
       {sidebar}
       {mobileSidebar}
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-card/80 backdrop-blur-md border-b border-border flex items-center px-4 gap-3 safe-top">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 backdrop-blur-md border-b border-border flex items-center px-4 gap-3 safe-top"
+           style={{ background: "oklch(0.205 0 0 / 0.85)" }}>
         <button onClick={() => setMobileOpen(true)} className="p-2 -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
           <Menu size={20} className="text-foreground" />
         </button>
         <span className="font-display font-bold text-base text-foreground flex-1">KOS</span>
         <Avatar className="h-7 w-7">
           <AvatarImage src={user?.image ?? ""} />
-          <AvatarFallback className="text-xs bg-primary/20 text-primary font-semibold">
+          <AvatarFallback
+            className="text-xs font-semibold text-primary"
+            style={{ background: "oklch(0.62 0.22 264 / 0.2)" }}
+          >
             {initials}
           </AvatarFallback>
         </Avatar>

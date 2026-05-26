@@ -30,14 +30,14 @@
     --accent-foreground: oklch(0.205 0 0);
 
     --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: oklch(0.985 0 0);
 
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
 
-    --surface:        240 5% 96%;
-    --surface-elevated: 0 0% 100%;
+    --surface:         oklch(0.962 0.004 264);
+    --surface-elevated: oklch(1 0 0);
 
     --radius: 0.625rem;
 
@@ -78,8 +78,8 @@
     --popover: oklch(0.205 0 0);
     --popover-foreground: oklch(0.985 0 0);
 
-    --primary: oklch(0.922 0 0);        /* amber — the one accent */
-    --primary-foreground: oklch(0.205 0 0);
+    --primary: oklch(0.62 0.22 264);     /* indigo — main interactive accent */
+    --primary-foreground: oklch(0.985 0 0);
 
     --secondary: oklch(0.269 0 0);        /* #181820 */
     --secondary-foreground: oklch(0.985 0 0);
@@ -91,14 +91,14 @@
     --accent-foreground: oklch(0.985 0 0);
 
     --destructive: oklch(0.704 0.191 22.216);
-    --destructive-foreground: 210 20% 93%;
+    --destructive-foreground: oklch(0.932 0.012 228);
 
     --border: oklch(1 0 0 / 10%);        /* subtle dividers */
     --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);        /* amber focus ring */
+    --ring: oklch(0.62 0.22 264);     /* indigo focus ring */
 
-    --surface:        240 8% 10%;
-    --surface-elevated: 240 7% 13%;
+    --surface:         oklch(0.168 0.01 264);
+    --surface-elevated: oklch(0.202 0.009 264);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -158,27 +158,28 @@
 }
 
 @layer components {
-  /* ── Amber glow — used on focus rings and active states ──────────────────── */
+  /* ── Indigo glow — active nav items and focus accents ──────────────────── */
   .amber-glow {
-    box-shadow: 0 0 0 1px hsl(38 92% 50% / 0.3),
-                0 0 12px hsl(38 92% 50% / 0.12);
+    box-shadow: 0 0 0 1px oklch(0.62 0.22 264 / 0.35),
+                0 0 16px oklch(0.62 0.22 264 / 0.15);
   }
 
   /* ── Glass surface (sidebar, cards on dark) ──────────────────────────────── */
+  /* color-mix() applies alpha to the oklch CSS variable values. */
   .glass {
-    background: hsl(var(--card) / 0.7);
+    background: color-mix(in oklch, var(--card) 70%, transparent);
     backdrop-filter: blur(12px) saturate(140%);
     -webkit-backdrop-filter: blur(12px) saturate(140%);
-    border: 1px solid hsl(var(--border) / 0.6);
+    border: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
   }
 
   /* ── Shimmer skeleton ────────────────────────────────────────────────────── */
   .skeleton {
     background: linear-gradient(
       90deg,
-      hsl(var(--muted)) 25%,
-      hsl(var(--surface-elevated)) 50%,
-      hsl(var(--muted)) 75%
+      var(--muted) 25%,
+      var(--surface-elevated) 50%,
+      var(--muted) 75%
     );
     background-size: 200% 100%;
     animation: shimmer 2s linear infinite;
@@ -188,11 +189,11 @@
   .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
+    background: var(--border);
     border-radius: 2px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: var(--muted-foreground);
   }
 
   /* ── Chat bubble ─────────────────────────────────────────────────────────── */

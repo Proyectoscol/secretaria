@@ -113,15 +113,21 @@ export default function ChatSessionPage() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto py-4 scrollbar-thin">
         {sessionMessages.length === 0 && (
-          <div className="h-full flex items-center justify-center">
+          <div className="h-full flex items-center justify-center px-4">
             <div className="text-center max-w-xs">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-primary font-display">K</span>
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg"
+                style={{
+                  background: "linear-gradient(135deg, oklch(0.62 0.22 264), oklch(0.52 0.24 290))",
+                  boxShadow: "0 8px 32px oklch(0.62 0.22 264 / 0.3)",
+                }}
+              >
+                <span className="text-2xl font-black text-white font-display select-none">K</span>
               </div>
-              <p className="font-display text-lg font-semibold text-foreground mb-1">
+              <p className="font-display text-lg font-semibold text-foreground mb-2">
                 Bibliotecario KOS
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 Pregunta sobre tus documentos, adjunta archivos o busca en tu base de conocimiento.
               </p>
             </div>

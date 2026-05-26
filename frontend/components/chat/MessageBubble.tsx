@@ -12,11 +12,11 @@ function CitationChip({ citation }: { citation: Citation }) {
   return (
     <Link
       href={`/library/${citation.documentId}`}
-      className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium",
-        "bg-primary/10 text-primary border border-primary/20",
-        "hover:bg-primary/20 transition-colors cursor-pointer"
-      )}
+      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium text-primary transition-colors cursor-pointer"
+      style={{
+        background: "oklch(0.62 0.22 264 / 0.1)",
+        border: "1px solid oklch(0.62 0.22 264 / 0.25)",
+      }}
     >
       <FileText size={11} />
       <span className="truncate max-w-[200px]">{citation.filename}</span>
@@ -60,7 +60,13 @@ export function MessageBubble({ message }: Props) {
       className={cn("flex gap-3 px-4 py-1 group", isUser && "justify-end")}
     >
       {!isUser && (
-        <div className="w-7 h-7 rounded-full bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+          style={{
+            background: "oklch(0.62 0.22 264 / 0.15)",
+            border: "1px solid oklch(0.62 0.22 264 / 0.25)",
+          }}
+        >
           <span className="text-[10px] font-bold text-primary">K</span>
         </div>
       )}
@@ -68,7 +74,13 @@ export function MessageBubble({ message }: Props) {
       <div className={cn("max-w-[85%] md:max-w-[70%]", isUser && "items-end")}>
         {/* Attachment indicator */}
         {message.attachmentName && (
-          <div className="flex items-center gap-1.5 mb-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 border border-primary/15 text-xs text-primary w-fit">
+          <div
+            className="flex items-center gap-1.5 mb-1.5 px-2.5 py-1.5 rounded-lg text-xs text-primary w-fit"
+            style={{
+              background: "oklch(0.62 0.22 264 / 0.1)",
+              border: "1px solid oklch(0.62 0.22 264 / 0.2)",
+            }}
+          >
             <FileText size={11} />
             {message.attachmentName}
           </div>
