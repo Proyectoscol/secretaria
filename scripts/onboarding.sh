@@ -332,13 +332,15 @@ echo
 info "── Microsoft App 1 (autenticación) ──────────────────────────────"
 MS_AUTH_CLIENT_ID=$(prompt MS_AUTH_CLIENT_ID "MICROSOFT_AUTH_CLIENT_ID")
 MS_AUTH_CLIENT_SECRET=$(prompt_secret "MICROSOFT_AUTH_CLIENT_SECRET")
-MS_AUTH_TENANT=$(prompt MS_AUTH_TENANT "MICROSOFT_AUTH_TENANT_ID" "common")
+# MICROSOFT_AUTH_TENANT_ID is always 'common'.
+# Both Azure apps use signInAudience "AzureADandPersonalMicrosoftAccount".
+# A specific tenant GUID causes AADSTS50020 for personal MSA accounts (@outlook/@hotmail).
 
 echo
 info "── Microsoft App 2 (permisos de plataforma) ─────────────────────"
 MS_PLATFORM_CLIENT_ID=$(prompt MS_PLATFORM_CLIENT_ID "MICROSOFT_PLATFORM_CLIENT_ID")
 MS_PLATFORM_CLIENT_SECRET=$(prompt_secret "MICROSOFT_PLATFORM_CLIENT_SECRET")
-MS_PLATFORM_TENANT=$(prompt MS_PLATFORM_TENANT "MICROSOFT_PLATFORM_TENANT_ID" "common")
+# MICROSOFT_PLATFORM_TENANT_ID is always 'common' — same reason as App 1.
 
 info "Generando MICROSOFT_TOKEN_ENCRYPTION_KEY…"
 ENCRYPTION_KEY=$(openssl rand -base64 32)
@@ -375,13 +377,15 @@ NEXT_PUBLIC_WS_URL=${WS_URL}
 # ── Microsoft App 1 — Autenticación ───────────────────────────────────────────
 MICROSOFT_AUTH_CLIENT_ID=${MS_AUTH_CLIENT_ID}
 MICROSOFT_AUTH_CLIENT_SECRET=${MS_AUTH_CLIENT_SECRET}
-MICROSOFT_AUTH_TENANT_ID=${MS_AUTH_TENANT}
+# 'common' allows both organizational (Entra ID) and personal (outlook/hotmail) accounts.
+# A specific tenant GUID breaks personal MSA sign-in with AADSTS50020.
+MICROSOFT_AUTH_TENANT_ID=common
 MICROSOFT_AUTH_SCOPES="openid profile email User.Read"
 
 # ── Microsoft App 2 — Permisos de plataforma ──────────────────────────────────
 MICROSOFT_PLATFORM_CLIENT_ID=${MS_PLATFORM_CLIENT_ID}
 MICROSOFT_PLATFORM_CLIENT_SECRET=${MS_PLATFORM_CLIENT_SECRET}
-MICROSOFT_PLATFORM_TENANT_ID=${MS_PLATFORM_TENANT}
+MICROSOFT_PLATFORM_TENANT_ID=common
 MICROSOFT_PLATFORM_SCOPES="offline_access Files.Read.All Mail.Read Calendars.Read"
 MICROSOFT_TOKEN_ENCRYPTION_KEY=${ENCRYPTION_KEY}
 
