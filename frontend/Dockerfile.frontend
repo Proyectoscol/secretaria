@@ -37,15 +37,22 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# openssl is required by Prisma's linux-musl-openssl-3.0.x query engine binary.
+# node:20-alpine ships OpenSSL 3.x (libssl.so.3); without it Prisma fails with
+# "libssl.so.1.1: No such file or directory".
+RUN apk add --no-cache openssl
+
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-# Prisma native query engine is not traced by Next.js standalone output.
-# Copy it explicitly so PrismaClient can load at runtime.
+# Next.js standalone traces JS modules but skips native .so engine binaries.
+# Copy both .prisma (engine) and @prisma (generated client with correct platform
+# references) AFTER standalone to override whatever the tracer captured.
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
 EXPOSE 3000
