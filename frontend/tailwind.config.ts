@@ -141,7 +141,24 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    // ── shadcn data-state variants ──────────────────────────────────────────
+    // shadcn v4 components use data-open: / data-closed: / data-disabled: etc.
+    // as Tailwind variants. In Tailwind v3 these require explicit registration.
+    // (In Tailwind v4 they'd come from shadcn/tailwind.css @custom-variant rules,
+    // but those are v4-only and break v3 PostCSS processing entirely.)
+    function ({ addVariant }: { addVariant: (name: string, definition: string | string[]) => void }) {
+      addVariant("data-open",    ['&[data-state="open"]',   '&[data-open]']);
+      addVariant("data-closed",  ['&[data-state="closed"]', '&[data-closed]']);
+      addVariant("data-checked", ['&[data-state="checked"]']);
+      addVariant("data-placeholder",  ["&[data-placeholder]"]);
+      addVariant("data-disabled",     ["&[data-disabled]"]);
+      addVariant("not-data-disabled", ["&:not([data-disabled])"]);
+      addVariant("data-inset",        ["&[data-inset]"]);
+      addVariant("data-align-trigger",["&[data-align-trigger]"]);
+    },
+  ],
 };
 
 export default config;

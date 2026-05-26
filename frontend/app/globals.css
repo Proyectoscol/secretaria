@@ -4,8 +4,12 @@
 
 /* ── Google Fonts: Sora (display) + Plus Jakarta Sans (UI) ──────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+/* NOTE: tw-animate-css and shadcn/tailwind.css are Tailwind v4-only packages.
+ * They inject @theme, @utility, and @custom-variant syntax that causes Tailwind
+ * v3's PostCSS plugin to fail silently, leaving @tailwind utilities unexpanded
+ * and producing a CSS file with zero utility classes.
+ * Animation utilities are covered by tailwindcss-animate (already in plugins).
+ * Data-state variants are added via the plugin in tailwind.config.ts. */
 
 /* ── CSS Color Variables ─────────────────────────────────────────────────────
  *
