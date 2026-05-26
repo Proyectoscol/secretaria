@@ -3,10 +3,14 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
       opendkim \
       opendkim-tools \
+      gettext-base \
       ca-certificates \
       && rm -rf /var/lib/apt/lists/*
 
-COPY opendkim.conf /etc/opendkim.conf
+# Copy as template — ${MAIL_DOMAIN} is substituted at container startup by entrypoint.sh
+COPY opendkim.conf /etc/opendkim.conf.template
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Create opendkim user home and key directories
 RUN mkdir -p /etc/opendkim/keys && \
@@ -15,4 +19,4 @@ RUN mkdir -p /etc/opendkim/keys && \
 
 EXPOSE 8891
 
-CMD ["/usr/sbin/opendkim", "-f", "-x", "/etc/opendkim.conf"]
+ENTRYPOINT ["/entrypoint.sh"]

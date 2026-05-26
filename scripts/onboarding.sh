@@ -14,7 +14,7 @@
 #   3  Environment variables (KOS + frontend .env.local)
 #   4  OpenRouter — AI model routing & cost management
 #   5  Langfuse  — LLM observability & tracing
-#   6  Infrastructure services (Redis, ClamAV, GROBID)
+#   6  Infrastructure services (PostgreSQL, Redis, ClamAV, GROBID)
 #   7  pgweb optional DB inspector
 #   8  Database migrations
 #   9  Frontend build (Prisma + Next.js)
@@ -650,14 +650,31 @@ fi
 # =============================================================================
 # SECCIÓN 6/13 — Servicios de infraestructura (Redis, ClamAV, GROBID)
 # =============================================================================
-header "6/13 — Servicios de infraestructura"
+header "6/13 — Servicios de infraestructura (PostgreSQL, Redis, ClamAV, GROBID)"
 
-info "Levantando Redis, ClamAV, GROBID…"
+info "Levantando PostgreSQL, Redis, ClamAV, GROBID…"
 info "Primera vez: ClamAV descarga ~200 MB de definiciones de virus. Ten paciencia."
 
 # --env-file suprime los warnings "variable is not set" para variables de correo
 # que aún no están configuradas pero están referenciadas en el compose file.
-docker compose --env-file "$KOS_ENV_FILE" -f docker-compose.kos.yml up -d redis clamav grobid
+# postgres se inicia aquí para que esté disponible cuando la sección 8 ejecute
+# las migraciones — sin esto, psql falla con "Connection refused" en fresh runs.
+docker compose --env-file "$KOS_ENV_FILE" -f docker-compose.kos.yml up -d postgres redis clamav grobid
+
+info "Esperando a que PostgreSQL esté disponible…"
+PG_READY=0
+for i in $(seq 1 30); do
+  if docker compose --env-file "$KOS_ENV_FILE" -f docker-compose.kos.yml exec -T postgres \
+      pg_isready -U openclaw &>/dev/null; then
+    PG_READY=1; break
+  fi
+  sleep 2
+done
+if [[ "$PG_READY" -eq 0 ]]; then
+  error "PostgreSQL no respondió en 60s. Revisa: docker compose -f docker-compose.kos.yml logs postgres"
+  exit 1
+fi
+success "PostgreSQL OK"
 
 info "Esperando a que Redis esté disponible…"
 REDIS_READY=0

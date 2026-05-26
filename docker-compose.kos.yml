@@ -244,7 +244,7 @@ services:
 
   # ── Langfuse — self-hosted LLM observability ────────────────────────────────
   langfuse:
-    image: langfuse/langfuse:latest
+    image: langfuse/langfuse:2
     restart: unless-stopped
     ports:
       - "127.0.0.1:3001:3000"          # UI accessible from localhost only

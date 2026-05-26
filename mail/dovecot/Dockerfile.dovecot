@@ -6,15 +6,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       dovecot-pop3d \
       dovecot-lmtpd \
       dovecot-sieve \
+      gettext-base \
       ca-certificates \
       && rm -rf /var/lib/apt/lists/*
 
-# Copy configuration
+# Copy static configuration files
 COPY dovecot.conf /etc/dovecot/dovecot.conf
 COPY conf.d/10-auth.conf /etc/dovecot/conf.d/10-auth.conf
 COPY conf.d/10-mail.conf /etc/dovecot/conf.d/10-mail.conf
-COPY conf.d/10-master.conf /etc/dovecot/conf.d/10-master.conf
 COPY conf.d/20-imap.conf /etc/dovecot/conf.d/20-imap.conf
+
+# 10-master.conf contains ${MAIL_DOMAIN} in SSL cert paths — copy as template.
+# entrypoint.sh runs envsubst to produce the real file at container startup.
+COPY conf.d/10-master.conf /etc/dovecot/conf.d/10-master.conf.template
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Create vmail user (uid 5000) for mailbox ownership
 RUN groupadd -g 5000 vmail && useradd -g vmail -u 5000 vmail -s /sbin/nologin
@@ -24,4 +30,4 @@ RUN mkdir -p /var/mail/vhosts && chown vmail:vmail /var/mail/vhosts
 
 EXPOSE 143 993 110 995 24
 
-CMD ["/usr/sbin/dovecot", "-F"]
+ENTRYPOINT ["/entrypoint.sh"]

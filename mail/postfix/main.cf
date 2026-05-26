@@ -98,4 +98,4 @@ smtpd_hard_error_limit = 10
 # ── Logging ───────────────────────────────────────────────────────────────────
 # Log to stderr for Docker
 maillog_file = /dev/stdout
-debug_peer_level = 0
+debug_peer_level = 2
