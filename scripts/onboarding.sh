@@ -830,16 +830,13 @@ fi
 # =============================================================================
 header "10/13 — Iniciando todos los servicios KOS"
 
-info "Construyendo imagen Python (Dockerfile.kos)…"
+info "Construyendo imagen Python (Dockerfile.kos) y levantando servicios…"
 info "Primera vez: descarga sentence-transformers (~400 MB). Sé paciente."
-docker build \
-  -t kos-python:latest \
-  -f "${REPO_DIR}/Dockerfile.kos" \
-  "${REPO_DIR}"
-success "Imagen kos-python:latest construida"
-
-info "Levantando celery_worker, librarian_api y frontend…"
-docker compose --env-file "$KOS_ENV_FILE" -f docker-compose.kos.yml up -d celery_worker librarian_api frontend
+# --build forces Docker Compose to rebuild images from source code before starting.
+# Without this, Compose reuses old images from previous runs and never picks up
+# code changes (including env_validator.py, agents/, services/ fixes from git pull).
+docker compose --env-file "$KOS_ENV_FILE" -f docker-compose.kos.yml \
+  up -d --build celery_worker librarian_api frontend
 success "Servicios KOS iniciados"
 
 info "Esperando al Librarian API (puerto 8001)…"
@@ -1130,8 +1127,9 @@ MAILENV
     echo
     info "Construyendo y levantando servicios de correo…"
     info "(Primera vez: puede tardar 2-3 minutos)"
-    docker compose --env-file "$KOS_ENV_FILE" -f "${REPO_DIR}/docker-compose.kos.yml" up -d \
-      postfix dovecot opendkim rspamd celery_beat
+    # --build ensures entrypoint.sh changes (envsubst for MAIL_DOMAIN) are picked up
+    docker compose --env-file "$KOS_ENV_FILE" -f "${REPO_DIR}/docker-compose.kos.yml" \
+      up -d --build postfix dovecot opendkim rspamd celery_beat
 
     # Health check
     sleep 10
