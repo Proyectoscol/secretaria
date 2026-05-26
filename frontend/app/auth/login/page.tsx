@@ -95,20 +95,16 @@ export default function LoginPage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5 shadow-2xl"
-            style={{
-              background: "linear-gradient(135deg, oklch(0.62 0.22 264), oklch(0.52 0.24 290))",
-              boxShadow: "0 8px 32px oklch(0.62 0.22 264 / 0.35)",
-            }}
+            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5 bg-primary shadow-2xl"
+            style={{ boxShadow: "0 8px 32px oklch(0.62 0.22 264 / 0.35)" }}
           >
-            <span className="font-display text-2xl font-black text-white select-none">K</span>
+            <span className="font-display text-2xl font-black text-primary-foreground select-none">K</span>
           </motion.div>
 
-          <h1 className="font-display text-2xl font-bold tracking-tight"
-              style={{ color: "oklch(0.985 0 0)" }}>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
             KOS
           </h1>
-          <p className="text-sm mt-1.5" style={{ color: "oklch(0.556 0 0)" }}>
+          <p className="text-sm mt-1.5 text-muted-foreground">
             Knowledge Operating System
           </p>
         </div>

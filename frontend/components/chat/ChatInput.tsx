@@ -29,7 +29,6 @@ export function ChatInput({ onSend, disabled }: Props) {
     const trimmed = text.trim();
     if (!trimmed && !attachedFile) return;
     setText("");
-    // Auto-resize back
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -46,7 +45,6 @@ export function ChatInput({ onSend, disabled }: Props) {
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
-    // Auto-resize
     e.target.style.height = "auto";
     e.target.style.height = Math.min(e.target.scrollHeight, 180) + "px";
   };
@@ -55,8 +53,7 @@ export function ChatInput({ onSend, disabled }: Props) {
     <div className="px-3 pb-3 pt-2 safe-bottom">
       {/* Attachment preview */}
       {attachedFile && (
-        <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg border border-border"
-             style={{ background: "oklch(0.269 0 0)" }}>
+        <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/60 border border-border">
           <Paperclip size={14} className="text-primary shrink-0" />
           <span className="text-xs text-foreground flex-1 truncate">{attachedFile.name}</span>
           <span className="text-xs text-muted-foreground shrink-0">
@@ -71,9 +68,8 @@ export function ChatInput({ onSend, disabled }: Props) {
         </div>
       )}
 
-      <div className="flex items-end gap-2 rounded-xl border border-border px-3 py-2"
-           style={{ background: "oklch(0.269 0 0)" }}>
-        {/* Attach button */}
+      <div className="flex items-end gap-2 rounded-xl bg-secondary/60 border border-border px-3 py-2">
+        {/* Attach */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}

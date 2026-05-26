@@ -116,13 +116,10 @@ export default function ChatSessionPage() {
           <div className="h-full flex items-center justify-center px-4">
             <div className="text-center max-w-xs">
               <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg"
-                style={{
-                  background: "linear-gradient(135deg, oklch(0.62 0.22 264), oklch(0.52 0.24 290))",
-                  boxShadow: "0 8px 32px oklch(0.62 0.22 264 / 0.3)",
-                }}
+                className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-5 shadow-lg"
+                style={{ boxShadow: "0 8px 32px oklch(0.62 0.22 264 / 0.3)" }}
               >
-                <span className="text-2xl font-black text-white font-display select-none">K</span>
+                <span className="text-2xl font-black text-primary-foreground font-display select-none">K</span>
               </div>
               <p className="font-display text-lg font-semibold text-foreground mb-2">
                 Bibliotecario KOS

@@ -7,134 +7,148 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* ── CSS Color Variables ─────────────────────────────────────────────────────
+ *
+ * ALL color variables are stored as raw OKLCH channel triplets (L C H)
+ * WITHOUT the oklch() wrapper. This lets tailwind.config.ts wrap them as
+ *   oklch(var(--xxx) / <alpha>)
+ * so that Tailwind v3 opacity modifiers (bg-primary/10, ring-ring/50, etc.)
+ * work correctly with OKLCH colors.
+ *
+ * ⚠ Do NOT use these variables as CSS property values directly — always
+ *   reference them through a Tailwind class or wrap in oklch():
+ *      ✗  background: var(--background)          → "0.145 0 0" (invalid)
+ *      ✓  background: oklch(var(--background))   → valid color
+ *      ✓  @apply bg-background                   → Tailwind wraps correctly
+ *
+ * Exception: --border and --input carry a companion --xxx-alpha for the
+ * default opacity (dark theme uses subtle semi-transparent borders).
+ * The tailwind function reads that alpha when no modifier is given.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
 @layer base {
   :root {
-    /* ── Light theme (secondary, not default) ───────────────────────────────── */
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
+    /* ── Light theme ──────────────────────────────────────────────────────── */
+    --background:          1 0 0;
+    --foreground:          0.145 0 0;
+    --card:                1 0 0;
+    --card-foreground:     0.145 0 0;
+    --popover:             1 0 0;
+    --popover-foreground:  0.145 0 0;
 
-    --primary: oklch(0.205 0 0);        /* amber-500 */
-    --primary-foreground: oklch(0.985 0 0);
+    --primary:             0.205 0 0;   /* near-black in light; indigo in dark */
+    --primary-foreground:  0.985 0 0;
 
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
+    --secondary:           0.97 0 0;
+    --secondary-foreground: 0.205 0 0;
 
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
+    --muted:               0.97 0 0;
+    --muted-foreground:    0.556 0 0;
 
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --accent:              0.97 0 0;
+    --accent-foreground:   0.205 0 0;
 
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.985 0 0);
+    --destructive:         0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
 
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --border:              0.922 0 0;
+    --border-alpha:        1;           /* solid border in light */
+    --input:               0.922 0 0;
+    --input-alpha:         1;
 
-    --surface:         oklch(0.962 0.004 264);
-    --surface-elevated: oklch(1 0 0);
+    --ring:                0.708 0 0;
+
+    --surface:             0.962 0.004 264;
+    --surface-elevated:    1 0 0;
 
     --radius: 0.625rem;
 
-    --chart-1: oklch(0.87 0 0);
-
-    --chart-2: oklch(0.556 0 0);
-
-    --chart-3: oklch(0.439 0 0);
-
-    --chart-4: oklch(0.371 0 0);
-
-    --chart-5: oklch(0.269 0 0);
-
-    --sidebar: oklch(0.985 0 0);
-
-    --sidebar-foreground: oklch(0.145 0 0);
-
-    --sidebar-primary: oklch(0.205 0 0);
-
+    /* ── Sidebar (used by shadcn sidebar components) ──────────────────────── */
+    --sidebar:              oklch(0.985 0 0);
+    --sidebar-foreground:   oklch(0.145 0 0);
+    --sidebar-primary:      oklch(0.205 0 0);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-
-    --sidebar-accent: oklch(0.97 0 0);
-
+    --sidebar-accent:       oklch(0.97 0 0);
     --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border:       oklch(0.922 0 0);
+    --sidebar-ring:         oklch(0.708 0 0);
 
-    --sidebar-border: oklch(0.922 0 0);
-
-    --sidebar-ring: oklch(0.708 0 0);
+    /* ── Charts ───────────────────────────────────────────────────────────── */
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
   }
 
   .dark {
-    /* ── Dark theme — default ───────────────────────────────────────────────── */
-    --background: oklch(0.145 0 0);        /* #0b0b0f — deep midnight */
-    --foreground: oklch(0.985 0 0);       /* near-white with warmth */
-    --card: oklch(0.205 0 0);         /* #111118 */
-    --card-foreground: oklch(0.985 0 0);
+    /* ── Dark theme (default — html carries class="dark") ─────────────────── */
+    --background:          0.145 0 0;   /* deep midnight #0b0b0f */
+    --foreground:          0.985 0 0;
+    --card:                0.205 0 0;   /* dark card #111118 */
+    --card-foreground:     0.985 0 0;
+    --popover:             0.205 0 0;
+    --popover-foreground:  0.985 0 0;
 
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
+    --primary:             0.62 0.22 264;   /* indigo */
+    --primary-foreground:  0.985 0 0;
 
-    --primary: oklch(0.62 0.22 264);     /* indigo — main interactive accent */
-    --primary-foreground: oklch(0.985 0 0);
+    --secondary:           0.269 0 0;
+    --secondary-foreground: 0.985 0 0;
 
-    --secondary: oklch(0.269 0 0);        /* #181820 */
-    --secondary-foreground: oklch(0.985 0 0);
+    --muted:               0.269 0 0;
+    --muted-foreground:    0.708 0 0;
 
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
+    --accent:              0.269 0 0;
+    --accent-foreground:   0.985 0 0;
 
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
+    --destructive:         0.704 0.191 22.216;
+    --destructive-foreground: 0.932 0.012 228;
 
-    --destructive: oklch(0.704 0.191 22.216);
-    --destructive-foreground: oklch(0.932 0.012 228);
+    /* Subtle semi-transparent borders in dark — companion alpha applies the
+       default transparency so border-border renders at 10% white by default,
+       while border-border/50 overrides to 50% when needed. */
+    --border:              1 0 0;
+    --border-alpha:        0.1;
+    --input:               1 0 0;
+    --input-alpha:         0.15;
 
-    --border: oklch(1 0 0 / 10%);        /* subtle dividers */
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.62 0.22 264);     /* indigo focus ring */
+    --ring:                0.62 0.22 264;   /* indigo focus ring */
 
-    --surface:         oklch(0.168 0.01 264);
-    --surface-elevated: oklch(0.202 0.009 264);
+    --surface:             0.168 0.01 264;
+    --surface-elevated:    0.202 0.009 264;
+
+    /* Sidebar */
+    --sidebar:             oklch(0.205 0 0);
+    --sidebar-foreground:  oklch(0.985 0 0);
+    --sidebar-primary:     oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent:      oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border:      oklch(1 0 0 / 10%);
+    --sidebar-ring:        oklch(0.62 0.22 264);
+
+    /* Charts */
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
   }
+
   .theme {
     --font-heading: var(--font-sans);
     --font-sans: var(--font-sans);
   }
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
-}
 
-@layer base {
   * {
-    @apply border-border;
+    /* outline-ring/50 works because ring is channel format → oklch(var(--ring)/0.5) */
+    @apply border-border outline-ring/50;
     box-sizing: border-box;
   }
 
   html {
+    @apply font-sans;
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
   }
@@ -164,50 +178,50 @@
                 0 0 16px oklch(0.62 0.22 264 / 0.15);
   }
 
-  /* ── Glass surface (sidebar, cards on dark) ──────────────────────────────── */
-  /* color-mix() applies alpha to the oklch CSS variable values. */
+  /* ── Glass surface — card with backdrop blur ─────────────────────────────
+   * Must use oklch(var(--xxx)) here since the CSS variables hold channels,
+   * not full color values.
+   * ─────────────────────────────────────────────────────────────────────── */
   .glass {
-    background: color-mix(in oklch, var(--card) 70%, transparent);
-    backdrop-filter: blur(12px) saturate(140%);
-    -webkit-backdrop-filter: blur(12px) saturate(140%);
-    border: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+    background: oklch(var(--card) / 0.75);
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    border: 1px solid oklch(var(--border) / calc(var(--border-alpha, 1) * 0.6));
   }
 
   /* ── Shimmer skeleton ────────────────────────────────────────────────────── */
   .skeleton {
     background: linear-gradient(
       90deg,
-      var(--muted) 25%,
-      var(--surface-elevated) 50%,
-      var(--muted) 75%
+      oklch(var(--muted)) 25%,
+      oklch(var(--surface-elevated)) 50%,
+      oklch(var(--muted)) 75%
     );
     background-size: 200% 100%;
     animation: shimmer 2s linear infinite;
   }
 
-  /* ── Scrollbar styling ────────────────────────────────────────────────────── */
+  /* ── Scrollbar styling ───────────────────────────────────────────────────── */
   .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: var(--border);
+    background: oklch(var(--border) / var(--border-alpha, 1));
     border-radius: 2px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: var(--muted-foreground);
+    background: oklch(var(--muted-foreground));
   }
 
-  /* ── Chat bubble ─────────────────────────────────────────────────────────── */
+  /* ── Chat markdown ───────────────────────────────────────────────────────── */
   .prose-chat {
     @apply text-sm leading-relaxed;
   }
   .prose-chat p { @apply mb-3 last:mb-0; }
   .prose-chat code {
-    @apply px-1.5 py-0.5 rounded text-xs font-mono
-           bg-secondary text-foreground;
+    @apply px-1.5 py-0.5 rounded text-xs font-mono bg-secondary text-foreground;
   }
   .prose-chat pre {
-    @apply p-3 rounded-lg overflow-x-auto text-xs font-mono
-           bg-secondary border border-border;
+    @apply p-3 rounded-lg overflow-x-auto text-xs font-mono bg-secondary border border-border;
   }
   .prose-chat pre code { @apply bg-transparent p-0; }
   .prose-chat a { @apply text-primary underline underline-offset-2; }
