@@ -17,6 +17,11 @@ const microsoftProvider = {
   id: "microsoft-entra-id",
   name: "Microsoft",
   type: "oauth" as const,
+  // Allow sign-in via Microsoft even when an account with the same email already
+  // exists (e.g. created via credentials). Without this flag Auth.js throws
+  // OAuthAccountNotLinked. Safe here because domain validation + Microsoft OAuth
+  // already ensure the email belongs to the authenticated user.
+  allowDangerousEmailAccountLinking: true,
   clientId: process.env.MICROSOFT_AUTH_CLIENT_ID as string,
   clientSecret: process.env.MICROSOFT_AUTH_CLIENT_SECRET as string,
   authorization: {
