@@ -874,6 +874,53 @@ done
 # =============================================================================
 header "11/13 — Nginx + SSL (Let's Encrypt)"
 
+# ── Detectar IP pública del servidor ─────────────────────────────────────────
+info "Detectando IP pública del servidor…"
+VPS_PUBLIC_IP=$(curl -4s --max-time 5 https://api.ipify.org 2>/dev/null \
+  || curl -4s --max-time 5 https://ifconfig.me 2>/dev/null \
+  || hostname -I 2>/dev/null | awk '{print $1}' \
+  || echo "")
+[[ -n "$VPS_PUBLIC_IP" ]] \
+  && success "IP del servidor detectada: ${VPS_PUBLIC_IP}" \
+  || warn "No se pudo detectar IP pública automáticamente"
+
+# ── Calcular host DNS relativo al dominio raíz ────────────────────────────────
+# Ejemplo:  secretaria.empresa.com  →  host = secretaria,  zona = empresa.com
+#           empresa.com             →  host = @,            zona = empresa.com
+_APP_ROOT_DOMAIN=$(echo "$DOMAIN" | rev | cut -d. -f1-2 | rev)
+if [[ "$DOMAIN" == "$_APP_ROOT_DOMAIN" ]]; then
+  _APP_DNS_HOST="@"
+  _APP_DNS_ZONE="$DOMAIN"
+else
+  _APP_DNS_HOST="${DOMAIN%."$_APP_ROOT_DOMAIN"}"
+  _APP_DNS_ZONE="$_APP_ROOT_DOMAIN"
+fi
+
+echo
+echo "  ┌─────────────────────────────────────────────────────────────────────┐"
+echo "  │  🌐  DNS requerido — configura ANTES de obtener el certificado SSL  │"
+echo "  └─────────────────────────────────────────────────────────────────────┘"
+echo
+echo "  El certificado Let's Encrypt solo se emite si ${DOMAIN} ya"
+echo "  resuelve a la IP de este servidor."
+echo
+printf "  %-7s  %-38s  %-6s  %s\n" "Tipo" "Nombre / Host" "TTL" "Valor"
+printf "  %-7s  %-38s  %-6s  %s\n" "───────" "──────────────────────────────────────" "──────" "────────────────────────────"
+printf "  %-7s  %-38s  %-6s  %s\n" "A" "${_APP_DNS_HOST}" "300" "${VPS_PUBLIC_IP:-<ip-de-tu-vps>}"
+echo
+note "  Zona DNS administrada: ${_APP_DNS_ZONE}"
+note "  Hostinger: Panel → Dominios → ${_APP_DNS_ZONE} → Zona DNS → Agregar registro"
+note "  Cloudflare: DNS → Records → Add record  |  TTL: Auto"
+note "  Propagación: normalmente 1–15 min (máx 24 h)"
+echo
+note "  Verifica propagación:  dig +short A ${DOMAIN}"
+echo
+if ! confirm "¿El registro A ya está configurado para ${DOMAIN} → ${VPS_PUBLIC_IP:-<ip>}?"; then
+  warn "Certbot fallará si el dominio aún no resuelve a esta IP."
+  warn "Cuando esté propagado, vuelve a ejecutar:  sudo bash scripts/onboarding.sh"
+  warn "(El script no guarda estado — necesitarás repetir las secciones previas con los mismos valores.)"
+fi
+
 # ── Phase 1: HTTP-only config ────────────────────────────────────────────────
 # Certbot's --nginx plugin runs `nginx -t` internally. If the nginx config
 # already has a 443 ssl block pointing to a cert that doesn't exist yet,
@@ -921,8 +968,12 @@ else
     EMAIL=$(prompt EMAIL "Email para Let's Encrypt (notificaciones de renovación)")
     # certonly --webroot: certbot writes the challenge token under /var/www/certbot,
     # nginx serves it over HTTP (Phase 1 config above). No nginx-plugin magic needed.
+    # Note: www.${DOMAIN} is intentionally omitted — for subdomains (e.g.
+    # secretaria.empresa.com) there is no www.secretaria.empresa.com DNS record,
+    # and certbot would fail with NXDOMAIN. Nginx still serves both names if a
+    # www record is ever added; the cert covers the primary domain only.
     sudo certbot certonly --webroot -w /var/www/certbot \
-      -d "${DOMAIN}" -d "www.${DOMAIN}" \
+      -d "${DOMAIN}" \
       --email "$EMAIL" --agree-tos --non-interactive
     success "Certificado SSL obtenido para ${DOMAIN}"
   else
@@ -1024,7 +1075,43 @@ else
   # ── 1. Dominio de correo ──────────────────────────────────────────────────
   echo
   MAIL_DOMAIN=$(prompt_optional "Dominio de correo (ej: empresa.com)" "${DOMAIN}")
-  VPS_IP=$(prompt_optional "IP pública de tu VPS" "")
+  # VPS_PUBLIC_IP was auto-detected in section 11; use it as default here.
+  VPS_IP=$(prompt_optional "IP pública de tu VPS" "${VPS_PUBLIC_IP:-}")
+  # Fall back to auto-detect in case section 11 ran before VPS_PUBLIC_IP existed
+  if [[ -z "$VPS_IP" ]]; then
+    VPS_IP=$(curl -4s --max-time 5 https://api.ipify.org 2>/dev/null \
+      || curl -4s --max-time 5 https://ifconfig.me 2>/dev/null || echo "")
+    [[ -n "$VPS_IP" ]] && info "IP del servidor detectada: ${VPS_IP}"
+  fi
+
+  # ── DNS: mostrar registros requeridos antes de verificar ─────────────────
+  # The user needs to know what to configure BEFORE we run dns_check.sh.
+  # After DKIM generation we show a second pass with the actual DKIM value.
+  echo
+  echo "  ┌────────────────────────────────────────────────────────────────────────────┐"
+  echo "  │  📧  DNS del correo — configura estos registros en tu proveedor de dominio │"
+  echo "  └────────────────────────────────────────────────────────────────────────────┘"
+  echo
+  echo "  Zona DNS: ${MAIL_DOMAIN}   |   IP del servidor: ${VPS_IP:-<tu-ip-vps>}"
+  echo
+  printf "  %-7s  %-30s  %-6s  %s\n" "Tipo" "Nombre / Host" "TTL" "Valor"
+  printf "  %-7s  %-30s  %-6s  %s\n" "───────" "──────────────────────────────" "──────" "────────────────────────────────────────────"
+  printf "  %-7s  %-30s  %-6s  %s\n" "A"    "mail"                   "300"  "${VPS_IP:-<tu-ip-vps>}   ← servidor de correo"
+  printf "  %-7s  %-30s  %-6s  %s\n" "MX"   "@"                      "300"  "10 mail.${MAIL_DOMAIN}"
+  printf "  %-7s  %-30s  %-6s  %s\n" "TXT"  "@"                      "300"  "v=spf1 ip4:${VPS_IP:-<ip>} mx -all"
+  printf "  %-7s  %-30s  %-6s  %s\n" "TXT"  "openclaw._domainkey"    "300"  "[se muestra tras generar DKIM ↓]"
+  printf "  %-7s  %-30s  %-6s  %s\n" "TXT"  "_dmarc"                 "300"  "v=DMARC1; p=quarantine; adkim=r; aspf=r"
+  echo
+  note "  PTR (reverse DNS): configura en tu panel VPS → Reverse DNS → mail.${MAIL_DOMAIN}"
+  note "  Hostinger: Panel → Dominios → ${MAIL_DOMAIN} → Zona DNS → Agregar registro"
+  note "  Cloudflare: DNS → Records → Add record"
+  echo
+  note "  Los registros MX, SPF y DMARC pueden propagarse en 15 min–24 h."
+  note "  El correo puede ir a spam o rebotarse hasta que estén todos activos."
+  echo
+  if ! confirm "¿Has agregado (o ya tenías) los registros A, MX, SPF y DMARC? (el DKIM se añade después)"; then
+    warn "Puedes continuar y añadirlos después, pero el correo no funcionará hasta que estén activos."
+  fi
 
   # ── 2. Verificar DNS ───────────────────────────────────────────────────────
   echo
@@ -1048,10 +1135,46 @@ else
     else
       info "Generando claves DKIM para ${MAIL_DOMAIN}…"
       bash "${REPO_DIR}/scripts/generate_dkim.sh" "${MAIL_DOMAIN}"
+    fi
+
+    # ── Mostrar registro DKIM con el valor real ───────────────────────────
+    DKIM_PRIV="${REPO_DIR}/mail/opendkim/keys/${MAIL_DOMAIN}/private.key"
+    if [[ -f "$DKIM_PRIV" ]]; then
+      DKIM_PUBKEY=$(openssl rsa -in "${DKIM_PRIV}" -pubout 2>/dev/null \
+        | grep -v "PUBLIC KEY" | tr -d '\n' || echo "")
+    else
+      DKIM_PUBKEY=""
+    fi
+    echo
+    echo "  ┌────────────────────────────────────────────────────────────────────────────┐"
+    echo "  │  🔑  Registro DKIM — agrega este TXT en tu proveedor de dominio            │"
+    echo "  └────────────────────────────────────────────────────────────────────────────┘"
+    echo
+    echo "  Zona DNS: ${MAIL_DOMAIN}"
+    echo
+    printf "  %-7s  %-30s  %-6s\n" "Tipo" "Nombre / Host" "TTL"
+    printf "  %-7s  %-30s  %-6s\n" "───────" "──────────────────────────────" "──────"
+    printf "  %-7s  %-30s  %-6s\n" "TXT" "openclaw._domainkey" "300"
+    echo
+    echo "  Valor:"
+    if [[ -n "$DKIM_PUBKEY" ]]; then
+      echo "    \"v=DKIM1; k=rsa; p=${DKIM_PUBKEY}\""
       echo
-      warn "⚠  IMPORTANTE: Agrega el registro TXT de DKIM mostrado arriba en tu DNS"
-      warn "   antes de continuar. Esto es crítico para que tus correos no vayan a spam."
-      confirm "¿Has agregado el registro DKIM en DNS? (puedes omitirlo y agregarlo después)" || true
+      # If key > 200 chars show split format for Cloudflare/Route53
+      if [[ ${#DKIM_PUBKEY} -gt 200 ]]; then
+        echo "  → Si tu proveedor requiere dividir el valor (Cloudflare, Route53):"
+        echo "    \"v=DKIM1; k=rsa; p=${DKIM_PUBKEY:0:200}\""
+        echo "    \"${DKIM_PUBKEY:200}\""
+        echo
+      fi
+    else
+      echo "    [No se pudo leer la clave — ejecuta: bash scripts/generate_dkim.sh ${MAIL_DOMAIN}]"
+      echo
+    fi
+    note "  Verifica tras la propagación:  dig TXT openclaw._domainkey.${MAIL_DOMAIN}"
+    echo
+    if ! confirm "¿Has agregado el registro DKIM en DNS? (puedes omitirlo y agregarlo después)"; then
+      warn "Sin DKIM, los correos enviados pueden ir a spam o ser rechazados."
     fi
 
     # ── 4. Credenciales del buzón ─────────────────────────────────────────
@@ -1109,29 +1232,6 @@ MAIL_REPORT_RECIPIENTS_DAILY=${MAIL_ADDRESS}
 MAILENV
     chmod 600 "$KOS_ENV_FILE"
     success "Variables de correo guardadas en .env.kos"
-
-    # ── DNS guidance table ────────────────────────────────────────────────
-    echo ""
-    echo -e "${BOLD}${CYAN}═══ DNS — Registros requeridos en tu proveedor de dominio ═══${RESET}"
-    echo ""
-    echo "  Configura estos registros en tu proveedor (Hostinger, GoDaddy, Cloudflare…)."
-    echo "  Los servicios NO funcionarán hasta tener DNS correcto."
-    echo ""
-    echo -e "  ${DIM}┌──────┬──────────────────────────────┬──────────────────────────────┐${RESET}"
-    echo -e "  ${DIM}│ Tipo │ Nombre                       │ Valor                        │${RESET}"
-    echo -e "  ${DIM}├──────┼──────────────────────────────┼──────────────────────────────┤${RESET}"
-    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "A"     "@"                           "${VPS_IP:-<tu-ip-vps>}"
-    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "A"     "mail"                         "${VPS_IP:-<tu-ip-vps>}"
-    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "A"     "www"                          "${VPS_IP:-<tu-ip-vps>}"
-    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "MX"    "@"                           "10 mail.${MAIL_DOMAIN}"
-    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "TXT"   "@"                           "v=spf1 mx -all"
-    printf   "  ${DIM}│${RESET} %-4s ${DIM}│${RESET} %-28s ${DIM}│${RESET} %-28s ${DIM}│${RESET}\n" "TXT"   "openclaw._domainkey"          "[ver DKIM arriba]"
-    echo -e "  ${DIM}└──────┴──────────────────────────────┴──────────────────────────────┘${RESET}"
-    echo ""
-    echo -e "  ${YELLOW}⚠  PTR (reverse DNS):${RESET} configura en Hostinger → VPS → Reverse DNS"
-    echo -e "     Valor: ${BOLD}mail.${MAIL_DOMAIN}${RESET}"
-    echo ""
-    note "  Verificar DNS después: bash scripts/dns_check.sh ${MAIL_DOMAIN} ${VPS_IP:-<ip>}"
 
     # ── 7. Aplicar migraciones de correo y seguridad ──────────────────────
     echo
@@ -1285,12 +1385,28 @@ else
   echo -e "${RESET}"
 fi
 
+echo -e "${CYAN}${BOLD}Primer acceso:${RESET}"
+echo
+echo "  Abre en tu navegador:"
+if [[ "${HTTPS_OK:-0}" -eq 1 ]]; then
+  echo "    https://${DOMAIN}"
+else
+  echo "    http://${DOMAIN}  (HTTPS estará disponible cuando el certificado SSL esté listo)"
+fi
+echo
+echo "  Opciones de inicio de sesión:"
+echo "    • Botón «Iniciar sesión con Microsoft» — usa tu cuenta Azure AD / Microsoft 365"
+echo "      Solo cuentas del dominio ${ALLOWED_DOMAIN#@} podrán acceder."
+echo "      El primer usuario en iniciar sesión queda registrado automáticamente."
+echo
+echo "    • Registro con email/contraseña (alternativa):"
+echo "        curl -X POST https://${DOMAIN}/api/auth/register \\"
+echo "          -H 'Content-Type: application/json' \\"
+echo "          -d '{\"fullName\":\"Admin\",\"email\":\"admin@${ALLOWED_DOMAIN#@}\",\"password\":\"...\",\"confirmPassword\":\"...\"}'"
+echo
 echo -e "${CYAN}${BOLD}Próximos pasos:${RESET}"
 echo
-echo "  1. Crea el primer usuario admin:"
-echo "       curl -X POST https://${DOMAIN}/api/auth/register \\"
-echo "         -H 'Content-Type: application/json' \\"
-echo "         -d '{\"fullName\":\"Admin\",\"email\":\"admin@${ALLOWED_DOMAIN#@}\",\"password\":\"...\",\"confirmPassword\":\"...\"}'"
+echo "  1. Inicia sesión con el botón Microsoft en https://${DOMAIN}"
 echo
 echo "  2. Configura renovación automática de SSL:"
 echo "       sudo systemctl enable certbot.timer"
