@@ -314,8 +314,16 @@ info "Generando NEXTAUTH_SECRET…"
 NEXTAUTH_SECRET=$(openssl rand -base64 32)
 success "NEXTAUTH_SECRET generado"
 
-DB_URL=$(prompt DB_URL "DATABASE_URL (PostgreSQL)" \
-  "postgresql://openclaw:openclaw@localhost:5432/openclaw")
+while true; do
+  DB_URL=$(prompt DB_URL "DATABASE_URL (PostgreSQL)" \
+    "postgresql://openclaw:openclaw@localhost:5432/openclaw")
+  if [[ "$DB_URL" =~ ^postgres(ql)?:// ]]; then
+    break
+  fi
+  error "DATABASE_URL debe comenzar con postgresql:// o postgres://"
+  warn  "Valor ingresado: ${DB_URL}"
+  warn  "Ejemplo correcto: postgresql://openclaw:openclaw@localhost:5432/openclaw"
+done
 
 LIBRARIAN_URL=$(prompt LIBRARIAN_URL "LIBRARIAN_API_URL (interno)" "http://localhost:8001")
 WS_URL=$(prompt WS_URL "NEXT_PUBLIC_WS_URL" "wss://${DOMAIN}")
