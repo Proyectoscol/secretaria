@@ -1,27 +1,50 @@
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { loginSchema, emailDomainRefinement } from "./validators";
+
+// ── Microsoft provider as OAuth2 (not OIDC) ──────────────────────────────────
+// Using the built-in MicrosoftEntraID provider with tenantId="common" triggers:
+//   "response body issuer does not match expectedIssuer"
+// because Microsoft's /common discovery doc returns the literal template string
+// "{tenantid}" as the issuer while the ID token carries the real tenant GUID.
+// Switching to type:"oauth" with explicit endpoints bypasses OIDC issuer
+// validation entirely. Graph /v1.0/me is used as userinfo — its "id" field
+// is the Azure Object ID (OID), equivalent to the "oid" claim in OIDC tokens.
+const microsoftProvider = {
+  id: "microsoft-entra-id",
+  name: "Microsoft",
+  type: "oauth" as const,
+  clientId: process.env.MICROSOFT_AUTH_CLIENT_ID as string,
+  clientSecret: process.env.MICROSOFT_AUTH_CLIENT_SECRET as string,
+  authorization: {
+    url: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+    params: {
+      scope: process.env.MICROSOFT_AUTH_SCOPES ?? "openid profile email User.Read",
+    },
+  },
+  token: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+  userinfo: "https://graph.microsoft.com/v1.0/me",
+  profile(profile: Record<string, string | null>) {
+    return {
+      id: profile["id"] as string,
+      name: profile["displayName"] ?? profile["userPrincipalName"] ?? "",
+      // 'mail' can be null for personal MSA accounts; fall back to userPrincipalName
+      email: profile["mail"] ?? profile["userPrincipalName"] ?? "",
+      image: null as string | null,
+    };
+  },
+};
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
 
   providers: [
-    // ── App 1: Microsoft Entra ID (authentication only) ──────────────────────
-    MicrosoftEntraID({
-      clientId: process.env.MICROSOFT_AUTH_CLIENT_ID!,
-      clientSecret: process.env.MICROSOFT_AUTH_CLIENT_SECRET!,
-      tenantId: process.env.MICROSOFT_AUTH_TENANT_ID ?? "common",
-      authorization: {
-        params: {
-          scope: process.env.MICROSOFT_AUTH_SCOPES ?? "openid profile email User.Read",
-        },
-      },
-    }),
+    // ── App 1: Microsoft (authentication only) ───────────────────────────────
+    microsoftProvider,
 
     // ── Local credentials ─────────────────────────────────────────────────────
     Credentials({
@@ -69,7 +92,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       // ── Microsoft sign-in: auto-create or link account ───────────────────
       if (account?.provider === "microsoft-entra-id") {
-        const oid = (profile as { oid?: string })?.oid ?? "";
+        // Graph /v1.0/me uses "id" as the Object ID (OID); OIDC used "oid"
+        const oid = (profile as { id?: string })?.id ?? "";
         const existing = await prisma.user.findUnique({ where: { email } });
 
         if (existing) {
