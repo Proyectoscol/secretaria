@@ -22,7 +22,11 @@ const microsoftProvider = {
   authorization: {
     url: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
     params: {
-      scope: process.env.MICROSOFT_AUTH_SCOPES ?? "openid profile email User.Read",
+      // 'openid' scope causes Microsoft to return id_token in the token response.
+      // type:"oauth" uses processAuthorizationCodeOAuth2Response() which rejects
+      // id_token with "Unexpected ID Token returned". Remove 'openid' so Microsoft
+      // returns only an access token. User.Read is sufficient for Graph /v1.0/me.
+      scope: "User.Read",
     },
   },
   token: "https://login.microsoftonline.com/common/oauth2/v2.0/token",

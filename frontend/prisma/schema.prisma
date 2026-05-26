@@ -1,5 +1,9 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // node:20-alpine (musl libc) ships with OpenSSL 3.x, not 1.1.
+  // Without this the query engine binary fails to load at runtime:
+  //   Error loading shared library libssl.so.1.1: No such file or directory
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
